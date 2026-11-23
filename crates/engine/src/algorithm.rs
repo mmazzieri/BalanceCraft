@@ -20,8 +20,10 @@ const WINDOW_DAYS: i64 = 30;
 const DEFAULT_WEIGHT: f64 = 5.0;
 const DAY_MS: f64 = 86_400_000.0;
 
+/// Not a tombstone. As in Cerqua, `deletedAt` counts only when it is truthy in
+/// JavaScript: 0 and NaN do not delete.
 fn alive(meta: Option<&EntityMeta>) -> bool {
-    meta.and_then(|m| m.deleted_at).is_none()
+    meta.and_then(|m| m.deleted_at).is_none_or(|d| d.get() == 0.0 || d.get().is_nan())
 }
 
 /// JavaScript's `weight || fallback`: missing, zero and NaN take the fallback.
