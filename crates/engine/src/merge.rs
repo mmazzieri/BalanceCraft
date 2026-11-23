@@ -684,3 +684,8 @@ pub fn merge(
     let merged = merge_json(&serde_json::to_value(local)?, &serde_json::to_value(remote)?, rules);
     serde_json::from_value(merged)
 }
+
+/// Same JSON, whatever the order of the object keys.
+pub fn canonical_eq(a: &Value, b: &Value) -> bool {
+    canonical(a) == canonical(b)
+}
