@@ -12,5 +12,12 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+balancecraft-model.workspace = true
 balancecraft-engine.workspace = true
 balancecraft-file.workspace = true
+chrono.workspace = true
+eframe.workspace = true
+egui.workspace = true
+rfd.workspace = true
+serde.workspace = true
+uuid.workspace = true

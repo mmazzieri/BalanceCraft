@@ -4,7 +4,17 @@ BalanceCraft keeps your life in balance, one task at a time. You split your acti
 
 It is a local desktop app written in Rust. Everything you enter lives in one file, `*.balancecraft`, which you can keep in a folder synced by OneDrive, Google Drive, Dropbox or Syncthing and open from several computers. When two computers edit the same file, BalanceCraft merges the changes field by field instead of overwriting them.
 
-> **Status:** early development. Nothing is usable yet: the plan is in [docs/plan.md](docs/plan.md) (in Italian).
+> **Status:** 0.1, in development. Today and the Tree work; Areas, Waiting and History, installers and signed releases come with 0.2. The plan is in [docs/plan.md](docs/plan.md) (in Italian).
+
+## Using it
+
+- **File › New document…** creates a `.balancecraft` file with five default areas. Put it in a synced folder to use it from several computers; **File › Open…** opens it on the others. A file name on the command line (`balancecraft path/to/file.balancecraft`) opens that file.
+- **Today** lists the tasks to do now, best first, with the deadline light (red: overdue or due today; yellow: within the warning, in Italian working days; green: later). Each task can be marked done (with undo), put on hold, edited or given a subtask.
+- **Tree** shows areas and branches. The `…` menu of each row adds, edits, moves (**Move to…** or up and down), completes, puts on hold and deletes.
+- **Settings** has the language (Italian or English) and the default deadline warning.
+- **File › Import Cerqua backup…** turns a JSON backup exported from Cerqua into a new `.balancecraft` file.
+
+Edits are saved on this computer at once and written to the shared file a second later. The app checks the shared file every few seconds and merges what other computers wrote. Copies made by the sync client after a conflict (`name-PC.balancecraft`, `name (1).balancecraft`) are merged and moved to `.balancecraft-merged/`; copies made by hand are listed in the status bar and left alone.
 
 ## Relation with Cerqua
 

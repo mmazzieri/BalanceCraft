@@ -130,8 +130,9 @@ Il README e `ATTRIBUTION.md` dichiarano che modello, algoritmo e merge vengono d
 7. **Cerqua**: PR per lo script dei vettori e per l'import con merge (rilascio in produzione: serve il sì di Mauro al merge).
 8. **Launcher**: issue/PR su `storytold/craft-launcher` per l'ingresso come community app.
 
-Ogni fase è una PR verso `main` di `mmazzieri/balancecraft`, che Mauro unisce.
+### Cosa contiene la 0.1 (fase 5)
 
-## Revisione dell'advisor (23/11/2026)
-
-Accolte tutte le osservazioni: replica locale per PC (era il rischio principale, perdita silenziosa di modifiche), import in Cerqua come merge e non come ripristino, merge anche dei campi sconosciuti, pareggi deterministici, orologio ibrido, regola per le repliche ferme da più di 30 giorni, proprietà del merge corrette, vettori deterministici, deserializzazione tollerante, polling di riserva e `ReplaceFileW`, identità di installazione fissata subito, provenienza scritta, `deny.toml` per piattaforma, 0.1 ridotta a Oggi e Albero. Risposte alle domande aperte: il disco come arbitro va bene con la replica locale e i pareggi deterministici; le copie di conflitto si riconoscono per nome e `documentId` insieme; la v1 resta senza CLI/MCP ma con uno strato di comandi puro.
+- Comandi dello store in `engine::commands`, con gli stessi timbri di `useStore.ts` e l'orologio ibrido; semaforo delle scadenze e cascata del preavviso in `engine::calendar` e `engine::settings`.
+- Interfaccia: Oggi (filtro per area, fatto con annulla, attesa, modifica, sotto-attività), Albero (menu `…` per riga: aggiungi, modifica, «Sposta in…», su e giù, fatto, attesa, elimina con conferma), Impostazioni (lingua, preavviso globale), menu File (nuovo, apri, recenti, import di un backup di Cerqua, chiudi). Stringhe italiane e inglesi in una tabella controllata dal compilatore.
+- Il file condiviso si scrive 1 s dopo l'ultima modifica e si controlla ogni 3 s (hash del contenuto): un polling al posto del watcher, che basta a questa frequenza e non aggiunge dipendenze.
+- Rimandati alla 0.2: trascinamento nell'Albero (oggi su e giù e «Sposta in…»), modifica dei prerequisiti (si conservano e si fondono, ma il form non li mostra), viste Aree, In attesa e Storico.
