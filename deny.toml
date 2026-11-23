@@ -16,6 +16,7 @@ allow = [
     "Unicode-3.0", "Zlib", "BSL-1.0", "0BSD", "Unlicense", "CC0-1.0", "OFL-1.1",
 ]
 confidence-threshold = 0.9
+unused-allowed-license = "allow"
 
 [bans]
 multiple-versions = "allow"
