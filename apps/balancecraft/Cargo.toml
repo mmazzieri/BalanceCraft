@@ -13,3 +13,5 @@ workspace = true
 
 [dependencies]
 balancecraft-ui-egui.workspace = true
+eframe.workspace = true
+egui.workspace = true
