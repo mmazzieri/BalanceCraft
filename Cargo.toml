@@ -26,3 +26,5 @@ balancecraft-model = { path = "crates/model" }
 balancecraft-engine = { path = "crates/engine" }
 balancecraft-file = { path = "crates/file" }
 balancecraft-ui-egui = { path = "crates/ui-egui" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }

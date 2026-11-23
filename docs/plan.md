@@ -89,7 +89,7 @@ Il punto debole di una riscrittura è la divergenza. Contromisura: vettori di pr
 
 ## Import in Cerqua
 
-`importData` di Cerqua è un ripristino: sostituisce tutto il cloud dell'account (#118, #131). Per un file BalanceCraft la proposta è un **import con merge**: Cerqua toglie la busta, controlla `formatVersion` e fonde `mergeAppData(locale, file)` senza ritimbrare, quindi nulla di quanto c'è solo in Cerqua viene cancellato (decisione di Mauro, sotto). La PR su Cerqua aggiunge anche: riconoscimento della busta in `pickAndImport`, MIME `application/vnd.balancecraft+json` e UTI su iOS e Android perché il selettore mostri i `.balancecraft`, messaggio chiaro se la versione del file è troppo nuova.
+`importData` di Cerqua è un ripristino: sostituisce tutto il cloud dell'account (#118, #131). Per un file BalanceCraft la proposta è un **import con merge**: Cerqua toglie la busta, controlla `formatVersion` e fonde `mergeAppData(locale, file)` senza ritimbrare, quindi nulla di quanto c’è solo in Cerqua viene cancellato (decisione di Mauro del 23/11/2026). La PR su Cerqua aggiunge anche: riconoscimento della busta in `pickAndImport`, MIME `application/vnd.balancecraft+json` e UTI su iOS e Android perché il selettore mostri i `.balancecraft`, messaggio chiaro se la versione del file è troppo nuova.
 
 ## Interfaccia (egui)
 
