@@ -122,13 +122,16 @@ fn delete_area_tombstones_subtree_and_log() {
 fn move_guards_and_stamps() {
     let d = base();
     // Into its own subtree: refused.
-    assert!(apply(&d, &Command::MoveTask { id: "b".into(), new_parent_id: "t1".into() }, &ctx(200.0)).is_none());
-    let m = run(&d, Command::MoveTask { id: "t1".into(), new_parent_id: "a".into() }, 200.0);
+    assert!(
+        apply(&d, &Command::MoveTask { id: "b".into(), new_parent_id: "t1".into(), before: None }, &ctx(200.0))
+            .is_none()
+    );
+    let m = run(&d, Command::MoveTask { id: "t1".into(), new_parent_id: "a".into(), before: None }, 200.0);
     let a = &m.areas[0];
     assert_eq!(a.children.iter().map(|n| n.id.as_str()).collect::<Vec<_>>(), ["b", "t1"]);
     assert_eq!(a.children[1].meta.as_ref().and_then(|x| x.structure), Some(Num(200.0)));
     // Same parent: to the end, as a reorder that stamps the siblings.
-    let r = run(&d, Command::MoveTask { id: "t1".into(), new_parent_id: "b".into() }, 300.0);
+    let r = run(&d, Command::MoveTask { id: "t1".into(), new_parent_id: "b".into(), before: None }, 300.0);
     let kids = &r.areas[0].children[0].children;
     assert_eq!(kids.iter().map(|n| n.id.as_str()).collect::<Vec<_>>(), ["t2", "t1"]);
     assert_eq!(kids[0].meta.as_ref().and_then(|x| x.structure), Some(Num(300.0)));
@@ -210,4 +213,91 @@ fn commands_round_trip_as_json() {
     );
     let back: Command = serde_json::from_str(&json).unwrap_or(Command::Resume { id: String::new() });
     assert_eq!(back, cmd);
+}
+
+#[test]
+fn area_status_trims_and_skips_equal_values() {
+    let d = run(&base(), Command::SetAreaStatus { area_id: "a".into(), status: "  On track ".into() }, 200.0);
+    assert_eq!(d.areas[0].status.as_deref(), Some("On track"));
+    assert_eq!(stamp(d.areas[0].meta.as_ref(), "status"), Some(200.0));
+    let same = Command::SetAreaStatus { area_id: "a".into(), status: "On track".into() };
+    assert!(apply(&d, &same, &ctx(201.0)).is_none());
+    let cleared = run(&d, Command::SetAreaStatus { area_id: "a".into(), status: "  ".into() }, 202.0);
+    assert_eq!(cleared.areas[0].status, None);
+    assert_eq!(stamp(cleared.areas[0].meta.as_ref(), "status"), Some(202.0));
+}
+
+#[test]
+fn next_action_text_and_task_go_together() {
+    let set = Command::SetAreaNextAction { area_id: "a".into(), text: "Call".into(), task_id: Some("t1".into()) };
+    let d = run(&base(), set, 200.0);
+    let a = &d.areas[0];
+    assert_eq!((a.next_action_text.as_deref(), a.next_action_task_id.as_deref()), (Some("Call"), Some("t1")));
+    assert_eq!(stamp(a.meta.as_ref(), "nextActionText"), stamp(a.meta.as_ref(), "nextActionTaskId"));
+    // Blank text drops the link too.
+    let d = run(
+        &d,
+        Command::SetAreaNextAction { area_id: "a".into(), text: " ".into(), task_id: Some("t1".into()) },
+        201.0,
+    );
+    assert_eq!((d.areas[0].next_action_text.as_ref(), d.areas[0].next_action_task_id.as_ref()), (None, None));
+}
+
+#[test]
+fn completing_the_next_action_logs_it_and_clears_it() {
+    let set = Command::SetAreaNextAction { area_id: "a".into(), text: "Call".into(), task_id: Some("t1".into()) };
+    let d = run(&base(), set, 200.0);
+    let d = run(&d, Command::CompleteNextAction { area_id: "a".into(), id: "x".into(), text: None }, 201.0);
+    let log = d.area_actions.as_deref().unwrap_or_default();
+    assert_eq!(log[0].text, "Call");
+    assert_eq!(log[0].source, ActionSource::Manual);
+    assert_eq!(log[0].task_id.as_deref(), Some("t1"));
+    assert_eq!(d.areas[0].next_action_text, None);
+    // Nothing to complete: nothing changes.
+    let again = Command::CompleteNextAction { area_id: "a".into(), id: "y".into(), text: None };
+    assert!(apply(&d, &again, &ctx(202.0)).is_none());
+}
+
+#[test]
+fn log_entries_are_written_edited_and_deleted() {
+    let d = run(&base(), Command::LogAreaAction { area_id: "a".into(), id: "x".into(), text: " Gym ".into() }, 200.0);
+    let blank = Command::LogAreaAction { area_id: "a".into(), id: "y".into(), text: "  ".into() };
+    assert!(apply(&d, &blank, &ctx(201.0)).is_none());
+    let edit = Command::EditAreaAction { id: "x".into(), text: Some("Gym".into()), at: Some("2026-11-20".into()) };
+    let d = run(&d, edit, 202.0);
+    let e = &d.area_actions.as_deref().unwrap_or_default()[0];
+    assert_eq!(e.at, "2026-11-20T00:00:00.000Z");
+    assert_eq!(stamp(e.meta.as_ref(), "text"), Some(200.0));
+    assert_eq!(stamp(e.meta.as_ref(), "at"), Some(202.0));
+    let bad = Command::EditAreaAction { id: "x".into(), text: None, at: Some("yesterday".into()) };
+    assert!(apply(&d, &bad, &ctx(203.0)).is_none());
+    let d = run(&d, Command::DeleteAreaAction { id: "x".into() }, 204.0);
+    let e = &d.area_actions.as_deref().unwrap_or_default()[0];
+    assert!(!alive(e.meta.as_ref()));
+}
+
+#[test]
+fn iso_dates_are_normalized_like_javascript() {
+    assert_eq!(normalize_iso("2026-11-20T10:00:00+01:00").as_deref(), Some("2026-11-20T09:00:00.000Z"));
+    assert_eq!(normalize_iso("2026-11-20T09:00:00.5Z").as_deref(), Some("2026-11-20T09:00:00.500Z"));
+    assert_eq!(normalize_iso("20/11/2026"), None);
+}
+
+#[test]
+fn move_before_a_sibling() {
+    let d = base();
+    let ids = |nodes: &[TaskNode]| nodes.iter().map(|n| n.id.clone()).collect::<Vec<_>>();
+    // Same parent: t2 before t1.
+    let before = Some("t1".to_owned());
+    let r = run(&d, Command::MoveTask { id: "t2".into(), new_parent_id: "b".into(), before }, 200.0);
+    assert_eq!(ids(&r.areas[0].children[0].children), ["t2", "t1"]);
+    // Another parent: t1 before the branch, at the top of the area.
+    let before = Some("b".to_owned());
+    let m = run(&d, Command::MoveTask { id: "t1".into(), new_parent_id: "a".into(), before }, 300.0);
+    assert_eq!(ids(&m.areas[0].children), ["t1", "b"]);
+    assert_eq!(ids(&m.areas[0].children[1].children), ["t2"]);
+    // An unknown sibling: at the end.
+    let before = Some("zz".to_owned());
+    let e = run(&d, Command::MoveTask { id: "t1".into(), new_parent_id: "a".into(), before }, 300.0);
+    assert_eq!(ids(&e.areas[0].children), ["b", "t1"]);
 }

@@ -46,6 +46,9 @@ pub struct Prefs {
 pub enum View {
     Today,
     Tree,
+    Areas,
+    Waiting,
+    History,
     Settings,
 }
 
@@ -354,7 +357,15 @@ impl BalanceCraftApp {
         });
         if self.store.is_some() {
             ui.separator();
-            for (view, label) in [(View::Today, s.today), (View::Tree, s.tree), (View::Settings, s.settings)] {
+            let views = [
+                (View::Today, s.today),
+                (View::Tree, s.tree),
+                (View::Areas, s.areas),
+                (View::Waiting, s.waiting),
+                (View::History, s.history),
+                (View::Settings, s.settings),
+            ];
+            for (view, label) in views {
                 if ui.selectable_label(self.ui.view == view, label).clicked() {
                     self.ui.view = view;
                 }
@@ -450,6 +461,9 @@ impl eframe::App for BalanceCraftApp {
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| match self.ui.view {
                 View::Today => views::today(ui, data, &mut self.ui),
                 View::Tree => views::tree(ui, data, &mut self.ui),
+                View::Areas => views::areas(ui, data, &mut self.ui),
+                View::Waiting => views::waiting(ui, data, &mut self.ui),
+                View::History => views::history(ui, data, &mut self.ui),
                 View::Settings => views::settings(ui, data, &mut self.ui, &meta.0, &meta.1),
             });
         });

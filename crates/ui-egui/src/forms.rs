@@ -11,6 +11,7 @@ use balancecraft_engine::commands::{AreaChange, NewArea, NewTask, TaskChange};
 use balancecraft_engine::settings::{Parsed, parse_advance_days, valid_advance_days};
 use balancecraft_model::{Area, Num, TaskNode};
 use chrono::{NaiveDate, NaiveDateTime};
+use std::collections::HashSet;
 
 pub const DUE_TIME: &str = "23:59";
 pub const START_TIME: &str = "00:00";
@@ -84,6 +85,8 @@ pub struct TaskForm {
     pub start: String,
     pub notes: String,
     pub advance: String,
+    /// Ids of the prerequisite tasks, in the order they were chosen.
+    pub prereqs: Vec<String>,
 }
 
 /// A task form that passed validation.
@@ -95,6 +98,7 @@ pub struct TaskValues {
     pub start: Option<String>,
     pub notes: Option<String>,
     pub advance: Option<f64>,
+    pub prereqs: Vec<String>,
 }
 
 impl TaskForm {
@@ -110,6 +114,15 @@ impl TaskForm {
             start: show_date(t.start_date.as_deref(), START_TIME),
             notes: t.notes.clone().unwrap_or_default(),
             advance: valid_advance_days(t.settings.advance_days).map(|v| v.to_string()).unwrap_or_default(),
+            prereqs: t.prereqs.clone().unwrap_or_default(),
+        }
+    }
+
+    pub fn toggle_prereq(&mut self, id: &str) {
+        if let Some(i) = self.prereqs.iter().position(|p| p == id) {
+            self.prereqs.remove(i);
+        } else {
+            self.prereqs.push(id.to_owned());
         }
     }
 
@@ -126,8 +139,30 @@ impl TaskForm {
             start: parse_date(&self.start, START_TIME).map_err(|()| s.err_date)?,
             notes: (!notes.is_empty()).then(|| notes.to_owned()),
             advance: parse_advance(&self.advance).map_err(|()| s.err_advance)?,
+            prereqs: self.prereqs.clone(),
         })
     }
+}
+
+fn same_set(a: &[String], b: &[String]) -> bool {
+    let x: HashSet<&String> = a.iter().collect();
+    let y: HashSet<&String> = b.iter().collect();
+    x == y
+}
+
+/// Prerequisites to save when the user changed them: the additions and
+/// removals made in the form, applied to the task's current list. A
+/// prerequisite added elsewhere while the form was open stays (Cerqua's
+/// `applyPrereqDelta`).
+pub fn apply_prereq_delta(current: &[String], base: &[String], edited: &[String]) -> Vec<String> {
+    let removed: Vec<&String> = base.iter().filter(|id| !edited.contains(id)).collect();
+    let mut out: Vec<String> = current.iter().filter(|id| !removed.contains(id)).cloned().collect();
+    for id in edited {
+        if !base.contains(id) && !out.contains(id) {
+            out.push(id.clone());
+        }
+    }
+    out
 }
 
 impl TaskValues {
@@ -138,13 +173,14 @@ impl TaskValues {
             due_date: self.due,
             start_date: self.start,
             notes: self.notes,
-            prereqs: Vec::new(),
+            prereqs: self.prereqs,
             advance_days: self.advance,
         }
     }
 
     /// The fields that differ from the ones the form showed at opening.
-    pub fn changes(self, opened: &TaskValues) -> Vec<TaskChange> {
+    /// `current`: the task's prerequisites now, which may have changed elsewhere.
+    pub fn changes(self, opened: &TaskValues, current: &[String]) -> Vec<TaskChange> {
         let mut out = Vec::new();
         if self.name != opened.name {
             out.push(TaskChange::Name(self.name));
@@ -163,6 +199,9 @@ impl TaskValues {
         }
         if self.advance != opened.advance {
             out.push(TaskChange::AdvanceDays(self.advance));
+        }
+        if !same_set(&self.prereqs, &opened.prereqs) {
+            out.push(TaskChange::Prereqs(apply_prereq_delta(current, &opened.prereqs, &self.prereqs)));
         }
         out
     }
@@ -262,12 +301,29 @@ mod tests {
         };
         let form = TaskForm::from_task(&t);
         let opened = form.validate(&IT).unwrap_or_else(|_| unreachable!());
-        assert!(opened.clone().changes(&opened).is_empty());
+        assert!(opened.clone().changes(&opened, &[]).is_empty());
         let mut edited = form.clone();
         edited.due.clear();
         edited.notes = "  ".into();
-        let changes = edited.validate(&IT).map(|v| v.changes(&opened)).unwrap_or_default();
+        let changes = edited.validate(&IT).map(|v| v.changes(&opened, &[])).unwrap_or_default();
         assert_eq!(changes, vec![TaskChange::DueDate(None)]);
+    }
+
+    #[test]
+    fn prereqs_keep_what_changed_elsewhere() {
+        let ids = |v: &[&str]| v.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+        // Opened with [a, b]; the user removes a and adds c; meanwhile d was
+        // added on another computer.
+        let out = apply_prereq_delta(&ids(&["a", "b", "d"]), &ids(&["a", "b"]), &ids(&["b", "c"]));
+        assert_eq!(out, ids(&["b", "d", "c"]));
+        let mut f = TaskForm { name: "x".into(), prereqs: ids(&["a"]), ..TaskForm::new() };
+        let opened = f.validate(&IT).unwrap_or_else(|_| unreachable!());
+        f.toggle_prereq("a");
+        f.toggle_prereq("a");
+        assert!(f.validate(&IT).map(|v| v.changes(&opened, &ids(&["a"]))).unwrap_or_default().is_empty());
+        f.toggle_prereq("c");
+        let changes = f.validate(&IT).map(|v| v.changes(&opened, &ids(&["a", "d"]))).unwrap_or_default();
+        assert_eq!(changes, vec![TaskChange::Prereqs(ids(&["a", "d", "c"]))]);
     }
 
     #[test]

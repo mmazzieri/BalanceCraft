@@ -136,3 +136,12 @@ Il README e `ATTRIBUTION.md` dichiarano che modello, algoritmo e merge vengono d
 - Interfaccia: Oggi (filtro per area, fatto con annulla, attesa, modifica, sotto-attività), Albero (menu `…` per riga: aggiungi, modifica, «Sposta in…», su e giù, fatto, attesa, elimina con conferma), Impostazioni (lingua, preavviso globale), menu File (nuovo, apri, recenti, import di un backup di Cerqua, chiudi). Stringhe italiane e inglesi in una tabella controllata dal compilatore.
 - Il file condiviso si scrive 1 s dopo l'ultima modifica e si controlla ogni 3 s (hash del contenuto): un polling al posto del watcher, che basta a questa frequenza e non aggiunge dipendenze.
 - Rimandati alla 0.2: trascinamento nell'Albero (oggi su e giù e «Sposta in…»), modifica dei prerequisiti (si conservano e si fondono, ma il form non li mostra), viste Aree, In attesa e Storico.
+
+### Cosa contiene la 0.2, prima parte (fase 6a)
+
+- Viste Aree, In attesa e Storico, come le schede di Cerqua. Aree ordina per giorni senza azioni (soglie 14 e 30, `engine::portfolio`, da `lib/areaActions.ts`); la pagina dell'area scrive stato, prossima azione (con il task collegato) e registro solo quando il valore cambia rispetto a quello mostrato (#156).
+- Comandi nuovi in `engine::commands`, con i timbri di `useStore.ts`: `SetAreaStatus`, `SetAreaNextAction`, `CompleteNextAction`, `LogAreaAction`, `EditAreaAction` (data normalizzata come `toISOString`), `DeleteAreaAction`. `MoveTask` accetta `before`: il trascinamento sposta e riordina con un solo comando.
+- Trascinamento nell'Albero: un'attività sopra o sotto un'altra, o sul nome di un'area (in cima all'area); le aree fra loro. Dentro un ramo si entra con «Sposta in…».
+- Prerequisiti nel form dell'attività: a Salva si scrivono le aggiunte e le rimozioni fatte nel form sull'elenco attuale (`applyPrereqDelta` di Cerqua).
+- Restano per la seconda parte (6b): pacchetti per le tre piattaforme, firma macOS, associazione dell'estensione.
+
