@@ -6,6 +6,12 @@
 //! Cerqua user can start from an export.
 #![forbid(unsafe_code)]
 
+pub mod conflicts;
+mod stale;
+pub mod store;
+
+pub use store::{Now, Store, StoreError, SyncReport};
+
 use balancecraft_model::{AppData, Extra};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
