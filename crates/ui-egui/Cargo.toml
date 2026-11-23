@@ -1,0 +1,16 @@
+[package]
+name = "balancecraft-ui-egui"
+description = "BalanceCraft user interface (egui)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+balancecraft-engine.workspace = true
+balancecraft-file.workspace = true

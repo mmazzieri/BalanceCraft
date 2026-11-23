@@ -1,0 +1,28 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "apps/*", "xtask"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.90"
+repository = "https://github.com/mmazzieri/balancecraft"
+publish = false
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+wildcard_imports = "deny"
+dbg_macro = "warn"
+todo = "warn"
+
+[workspace.dependencies]
+balancecraft-model = { path = "crates/model" }
+balancecraft-engine = { path = "crates/engine" }
+balancecraft-file = { path = "crates/file" }
+balancecraft-ui-egui = { path = "crates/ui-egui" }
