@@ -10,7 +10,10 @@ It is a local desktop app written in Rust. Everything you enter lives in one fil
 
 - **File › New document…** creates a `.balancecraft` file with five default areas. Put it in a synced folder to use it from several computers; **File › Open…** opens it on the others. A file name on the command line (`balancecraft path/to/file.balancecraft`) opens that file.
 - **Today** lists the tasks to do now, best first, with the deadline light (red: overdue or due today; yellow: within the warning, in Italian working days; green: later). Each task can be marked done (with undo), put on hold, edited or given a subtask.
-- **Tree** shows areas and branches. The `…` menu of each row adds, edits, moves (**Move to…** or up and down), completes, puts on hold and deletes.
+- **Tree** shows areas and branches. The `…` menu of each row adds, edits, moves (**Move to…** or up and down), completes, puts on hold and deletes. A task can also be dragged above or below another task, or onto an area name to put it at the top of that area; areas are reordered by dragging their names.
+- **Areas** lists the areas, the most neglected first: days since the last action, status, last action and next action. Clicking an area opens its page, where the status, the next action (optionally linked to a task) and the log of actions are written and edited.
+- **Waiting** lists the tasks on hold with the reason, to resume or complete them. **History** lists the completed tasks, newest first; a completion can be undone from there.
+- The task form has the **prerequisites**: tasks that must be done first. Until they are, the task stays out of Today.
 - **Settings** has the language (Italian or English) and the default deadline warning.
 - **File › Import Cerqua backup…** turns a JSON backup exported from Cerqua into a new `.balancecraft` file.
 

@@ -138,11 +138,14 @@ pub enum Command {
     DeleteTask {
         id: String,
     },
-    /// Moves the task under a visible area or task, at the end. In the parent
-    /// it already has, it goes to the end of the same list.
+    /// Moves the task under a visible area or task, before the sibling
+    /// `before` or, without it, at the end. In the parent it already has, it
+    /// changes place in the same list.
     MoveTask {
         id: String,
         new_parent_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        before: Option<String>,
     },
     ReorderChildren {
         parent_id: String,
@@ -168,6 +171,44 @@ pub enum Command {
     SetAdvanceDays {
         value: Option<f64>,
     },
+    /// One-line status of an area; blank removes it.
+    SetAreaStatus {
+        area_id: String,
+        status: String,
+    },
+    /// Next action of an area, optionally linked to one of its tasks; blank
+    /// text removes both.
+    SetAreaNextAction {
+        area_id: String,
+        text: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        task_id: Option<String>,
+    },
+    /// Writes the next action (or `text`, when given) in the area log and clears it.
+    CompleteNextAction {
+        area_id: String,
+        id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        text: Option<String>,
+    },
+    /// A log entry written by hand.
+    LogAreaAction {
+        area_id: String,
+        id: String,
+        text: String,
+    },
+    /// Changes the text and/or the date of a log entry; blank text and an
+    /// invalid date are ignored.
+    EditAreaAction {
+        id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        text: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        at: Option<String>,
+    },
+    DeleteAreaAction {
+        id: String,
+    },
 }
 
 /// Applies `cmd` to `data`. `None`: nothing changes.
@@ -189,7 +230,9 @@ pub fn apply(data: &AppData, cmd: &Command, ctx: &Ctx) -> Option<AppData> {
                 return None;
             }
         }
-        Command::MoveTask { id, new_parent_id } => move_task(&mut out, id, new_parent_id, t)?,
+        Command::MoveTask { id, new_parent_id, before } => {
+            move_task(&mut out, id, new_parent_id, before.as_deref(), t)?
+        }
         Command::ReorderChildren { parent_id, order } => reorder_children(&mut out, parent_id, order, t)?,
         Command::CompleteTask { id, entry_id, action_id } => complete(&mut out, id, entry_id, action_id, ctx)?,
         Command::Uncomplete { id } => uncomplete(&mut out, id, t),
@@ -200,6 +243,19 @@ pub fn apply(data: &AppData, cmd: &Command, ctx: &Ctx) -> Option<AppData> {
             }
         }
         Command::SetAdvanceDays { value } => set_advance_days(&mut out, *value, t)?,
+        Command::SetAreaStatus { area_id, status } => set_area_status(&mut out, area_id, status, t)?,
+        Command::SetAreaNextAction { area_id, text, task_id } => {
+            set_next_action(&mut out, area_id, text, task_id.as_deref(), t)?;
+        }
+        Command::CompleteNextAction { area_id, id, text } => {
+            complete_next_action(&mut out, area_id, id, text.as_deref(), ctx)?;
+        }
+        Command::LogAreaAction { area_id, id, text } => log_action(&mut out, area_id, id, text, ctx)?,
+        Command::EditAreaAction { id, text, at } => edit_action(&mut out, id, text.as_deref(), at.as_deref(), t)?,
+        Command::DeleteAreaAction { id } => {
+            let e = out.area_actions.iter_mut().flatten().find(|e| e.id == *id && alive(e.meta.as_ref()))?;
+            mark_deleted(&mut e.meta, t);
+        }
     }
     (out != *data).then_some(out)
 }
@@ -355,17 +411,23 @@ fn edit_task(data: &mut AppData, id: &str, changes: &[TaskChange], t: f64) -> Op
     Some(())
 }
 
-fn move_task(data: &mut AppData, id: &str, new_parent_id: &str, t: f64) -> Option<()> {
-    // Already in that parent: a reorder that sends it to the end.
-    if let Some(siblings) = children_of(&data.areas, new_parent_id)
-        && siblings.iter().any(|n| n.id == id)
-    {
-        let order: Vec<String> = siblings
-            .iter()
-            .filter(|n| n.id != id && alive(n.meta.as_ref()))
-            .map(|n| n.id.clone())
-            .chain(std::iter::once(id.to_owned()))
-            .collect();
+/// Order of the live children of `parent_id` with `id` placed before
+/// `before` (at the end when `before` is missing or not a live sibling).
+fn order_with(data: &AppData, parent_id: &str, id: &str, before: Option<&str>) -> Option<Vec<String>> {
+    let mut order: Vec<String> = children_of(&data.areas, parent_id)?
+        .iter()
+        .filter(|n| n.id != id && alive(n.meta.as_ref()))
+        .map(|n| n.id.clone())
+        .collect();
+    let at = before.and_then(|b| order.iter().position(|x| x == b)).unwrap_or(order.len());
+    order.insert(at, id.to_owned());
+    Some(order)
+}
+
+fn move_task(data: &mut AppData, id: &str, new_parent_id: &str, before: Option<&str>, t: f64) -> Option<()> {
+    // Already in that parent: a reorder.
+    if children_of(&data.areas, new_parent_id).is_some_and(|c| c.iter().any(|n| n.id == id)) {
+        let order = order_with(data, new_parent_id, id, before)?;
         return reorder_children(data, new_parent_id, &order, t);
     }
     // Not into itself, nor under a deleted or missing parent: the subtree
@@ -377,6 +439,12 @@ fn move_task(data: &mut AppData, id: &str, new_parent_id: &str, t: f64) -> Optio
     let mut node = extract(&mut data.areas, id)?;
     touch_structure(&mut node.meta, t);
     children_of_mut(&mut data.areas, new_parent_id)?.push(node);
+    // Before a sibling: the whole list takes the new order, as a drag in Cerqua.
+    if before.is_some() {
+        let order = order_with(data, new_parent_id, id, before)?;
+        // Already last (unknown `before`): nothing more to stamp.
+        let _ = reorder_children(data, new_parent_id, &order, t);
+    }
     Some(())
 }
 
@@ -499,6 +567,114 @@ fn set_advance_days(data: &mut AppData, value: Option<f64>, t: f64) -> Option<()
     // A removed override keeps its stamp, so the removal wins the merge.
     settings.values.advance_days = num(value);
     touch(&mut settings.meta, &["advanceDays"], t);
+    Some(())
+}
+
+fn non_blank(s: &str) -> Option<String> {
+    let s = s.trim();
+    (!s.is_empty()).then(|| s.to_owned())
+}
+
+fn visible_area_mut<'a>(data: &'a mut AppData, id: &str) -> Option<&'a mut Area> {
+    find_visible_area(&data.areas, id)?;
+    data.areas.iter_mut().find(|a| a.id == id)
+}
+
+fn set_area_status(data: &mut AppData, area_id: &str, status: &str, t: f64) -> Option<()> {
+    let a = visible_area_mut(data, area_id)?;
+    let value = non_blank(status);
+    if a.status == value {
+        return None;
+    }
+    a.status = value;
+    touch(&mut a.meta, &["status"], t);
+    Some(())
+}
+
+fn set_next_action(data: &mut AppData, area_id: &str, text: &str, task_id: Option<&str>, t: f64) -> Option<()> {
+    let a = visible_area_mut(data, area_id)?;
+    let text = non_blank(text);
+    let task_id = text.as_ref().and(task_id).map(str::to_owned);
+    if a.next_action_text == text && a.next_action_task_id == task_id {
+        return None;
+    }
+    // Text and linked task are written together, as Cerqua does: taken one by
+    // one in the merge, a text could end up linked to another device's task.
+    a.next_action_text = text;
+    a.next_action_task_id = task_id;
+    touch(&mut a.meta, &["nextActionText", "nextActionTaskId"], t);
+    Some(())
+}
+
+fn push_action(data: &mut AppData, mut action: AreaAction, t: f64) {
+    touch(&mut action.meta, &["text", "at"], t);
+    data.area_actions.get_or_insert_with(Vec::new).insert(0, action);
+}
+
+fn complete_next_action(data: &mut AppData, area_id: &str, id: &str, text: Option<&str>, ctx: &Ctx) -> Option<()> {
+    let t = ctx.stamp;
+    let a = visible_area_mut(data, area_id)?;
+    let text = non_blank(text.or(a.next_action_text.as_deref()).unwrap_or_default())?;
+    let task_id = a.next_action_task_id.take();
+    a.next_action_text = None;
+    touch(&mut a.meta, &["nextActionText", "nextActionTaskId"], t);
+    let action = AreaAction {
+        id: id.to_owned(),
+        area_id: area_id.to_owned(),
+        text,
+        at: ctx.now_iso.clone(),
+        source: ActionSource::Manual,
+        task_id,
+        ..AreaAction::default()
+    };
+    push_action(data, action, t);
+    Some(())
+}
+
+fn log_action(data: &mut AppData, area_id: &str, id: &str, text: &str, ctx: &Ctx) -> Option<()> {
+    find_visible_area(&data.areas, area_id)?;
+    let action = AreaAction {
+        id: id.to_owned(),
+        area_id: area_id.to_owned(),
+        text: non_blank(text)?,
+        at: ctx.now_iso.clone(),
+        source: ActionSource::Manual,
+        ..AreaAction::default()
+    };
+    push_action(data, action, ctx.stamp);
+    Some(())
+}
+
+/// A date-time as JavaScript's `toISOString` writes it, from an ISO date-time
+/// with an offset or a bare date (UTC midnight, as `Date.parse` reads it).
+pub fn normalize_iso(s: &str) -> Option<String> {
+    let s = s.trim();
+    let dt = DateTime::parse_from_rfc3339(s).map(|d| d.with_timezone(&Utc)).ok().or_else(|| {
+        chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok().and_then(|d| d.and_hms_opt(0, 0, 0)).map(|d| d.and_utc())
+    })?;
+    Some(dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string())
+}
+
+fn edit_action(data: &mut AppData, id: &str, text: Option<&str>, at: Option<&str>, t: f64) -> Option<()> {
+    let e = data.area_actions.iter_mut().flatten().find(|e| e.id == id && alive(e.meta.as_ref()))?;
+    let mut changed: Vec<&str> = Vec::new();
+    if let Some(v) = text.and_then(non_blank)
+        && v != e.text
+    {
+        e.text = v;
+        changed.push("text");
+    }
+    // Normalized, because lists sort by string comparison.
+    if let Some(v) = at.and_then(normalize_iso)
+        && v != e.at
+    {
+        e.at = v;
+        changed.push("at");
+    }
+    if changed.is_empty() {
+        return None;
+    }
+    touch(&mut e.meta, &changed, t);
     Some(())
 }
 

@@ -11,6 +11,7 @@ pub(crate) mod jsdate;
 pub(crate) mod json;
 pub mod merge;
 pub mod meta;
+pub mod portfolio;
 pub mod settings;
 pub mod stamps;
 pub mod tree;
