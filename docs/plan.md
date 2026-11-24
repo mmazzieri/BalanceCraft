@@ -6,7 +6,7 @@ Stato: v2, rivista dall'advisor il 23/11/2026 e corretta secondo le sue osservaz
 
 App desktop locale in Rust che gestisce aree e attività con l'algoritmo di bilanciamento di Cerqua, e salva tutto in un unico file `.balancecraft` che l'utente può tenere in una cartella sincronizzata (OneDrive, Google Drive, Dropbox, Syncthing). Cerqua importerà quel file. Più avanti: candidatura come community app nell'ArtCraft Launcher.
 
-Fuori dalla v1: account, server, AI, app mobile, build web, MCP/CLI, sincronizzazione diretta con API cloud.
+Fuori dalla v1: account, server, AI, app mobile, build web, sincronizzazione diretta con API cloud.
 
 ## Vincoli
 
@@ -104,7 +104,7 @@ Più: impostazioni globali, File → Nuovo / Apri / Apri recenti / Salva come, i
 Lingue: italiano e inglese, stringhe in un catalogo (`fluent` o tabella come il launcher). Accessibilità: AccessKit di egui attivo, navigazione da tastiera completa.
 Aree di default al primo «Nuovo documento»: quelle di Cerqua.
 
-Le operazioni dello store stanno in `engine` come comandi puri, con nome e argomenti serializzabili: una CLI o un server MCP futuri (che dovranno seguire RFC-0015) li riusano senza rifacimenti.
+Le operazioni dello store stanno in `engine` come comandi puri, con nome e argomenti serializzabili: la CLI e il server MCP (`crates/commands` e `apps/balancecraft-cli`, issue #9) li riusano. Ogni comando apre il documento con una replica propria, separata da quella dell'app, e le due si incontrano nel merge. Della RFC-0015 mancano l'apertura in un solo passo (il crate `confine` di craft-libs non esiste ancora) e il rifiuto degli hard link su Windows.
 
 ## Identità dell'app (fissata prima della 0.1)
 

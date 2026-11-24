@@ -60,6 +60,9 @@
         <!-- Win+R "balancecraft". -->
         <RegistryValue Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\balancecraft.exe" Value="[#BalanceCraftExe]" Type="string" />
       </Component>
+      <Component Id="BalanceCraftCli" Directory="INSTALLFOLDER" Guid="EFF15C31-184E-48DC-8884-5CC19679D5C2">
+        <File Id="BalanceCraftCliExe" Source="$(var.BinDir)\balancecraft-cli.exe" KeyPath="yes" />
+      </Component>
       <Component Id="BalanceCraftShortcut" Directory="ProgramMenuFolder" Guid="6790ECFD-ABA0-4B32-88B0-5335433BD723">
         <Shortcut Id="StartMenuShortcut" Name="BalanceCraft" Description="Tasks by area of life"
             Target="[#BalanceCraftExe]" WorkingDirectory="INSTALLFOLDER" Icon="BalanceCraftIcon.exe">

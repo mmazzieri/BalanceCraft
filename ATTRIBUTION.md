@@ -21,6 +21,8 @@ Rust crates are listed with their licenses by `cargo deny list`; `cargo deny che
 | chrono-tz (tests only) | 0.10 | MIT OR Apache-2.0 |
 | uuid | 1 | Apache-2.0 OR MIT |
 | sha2 | 0.10 | MIT OR Apache-2.0 |
+| craft-mcp-server (storytold/craft-libs) | 0.1 | MIT OR Apache-2.0 |
+| clap | 4 | MIT OR Apache-2.0 |
 | thiserror | 2 | MIT OR Apache-2.0 |
 | tempfile (tests only) | 3 | MIT OR Apache-2.0 |
 

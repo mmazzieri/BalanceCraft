@@ -6,7 +6,7 @@ members = ["crates/*", "apps/*", "xtask"]
 version = "0.2.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
-rust-version = "1.90"
+rust-version = "1.95"
 repository = "https://github.com/mmazzieri/balancecraft"
 publish = false
 
@@ -25,7 +25,10 @@ todo = "warn"
 balancecraft-model = { path = "crates/model" }
 balancecraft-engine = { path = "crates/engine" }
 balancecraft-file = { path = "crates/file" }
+balancecraft-commands = { path = "crates/commands" }
 balancecraft-ui-egui = { path = "crates/ui-egui" }
+craft-mcp-server = { git = "https://github.com/storytold/craft-libs", rev = "249a41bd9306a1b34330ac94e596a1a8b881378a" }
+clap = { version = "4", features = ["derive", "env"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 uuid = { version = "1", features = ["v4"] }

@@ -59,6 +59,9 @@ contents:
   - src: ${STAGE}/usr/bin/balancecraft
     dst: /usr/bin/balancecraft
     file_info: { mode: 0755 }
+  - src: ${STAGE}/usr/bin/balancecraft-cli
+    dst: /usr/bin/balancecraft-cli
+    file_info: { mode: 0755 }
   - src: ${STAGE}/usr/share/
     dst: /usr/share/
     type: tree
