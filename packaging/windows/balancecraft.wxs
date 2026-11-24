@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  BalanceCraft MSI (WiX Toolset v5: `dotnet tool install -g wix --version 5.0.2`). Built by
+  BalanceCraft MSI (WiX Toolset v5: the .NET tool "wix", version 5.0.2). Built by
   package.ps1:
 
     wix build balancecraft.wxs -arch x64 -d Version=1.2.3 -d BinDir=... -d IconPath=... -o out.msi
