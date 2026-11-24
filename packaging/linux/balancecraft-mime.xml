@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The .balancecraft document type, for the desktop's file association. -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/vnd.balancecraft+json">
+    <sub-class-of type="application/json"/>
+    <comment>BalanceCraft document</comment>
+    <comment xml:lang="it">Documento BalanceCraft</comment>
+    <icon name="it.mauromazzieri.balancecraft"/>
+    <glob pattern="*.balancecraft"/>
+  </mime-type>
+</mime-info>

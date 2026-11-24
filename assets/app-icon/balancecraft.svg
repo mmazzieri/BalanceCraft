@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- BalanceCraft icon: reference drawing of tools/icons.py (MIT OR Apache-2.0). -->
+  <rect width="1024" height="1024" rx="220" fill="#2E6B4E"/>
+  <g fill="#FFFFFF">
+    <rect x="496" y="250" width="32" height="540"/>
+    <rect x="352" y="780" width="320" height="50" rx="24"/>
+    <rect x="212" y="284" width="600" height="32" rx="16"/>
+    <path d="M112 560 A150 90 0 0 0 412 560 Z"/>
+    <path d="M612 560 A150 90 0 0 0 912 560 Z"/>
+  </g>
+  <g stroke="#FFFFFF" stroke-width="14">
+    <path d="M262 300 L152 560 M262 300 L372 560 M762 300 L652 560 M762 300 L872 560"/>
+  </g>
+  <circle cx="512" cy="272" r="34" fill="#F2C94C"/>
+</svg>

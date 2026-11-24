@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template: package.sh substitutes @VERSION@ (full) and @SHORT_VERSION@ (numeric X.Y.Z).
+     The .balancecraft type is exported so Finder names and recognises it. The app does not
+     claim it as a document type yet: opening a document from Finder arrives as an Apple Event,
+     which the windowing library does not pass on, so the app would start without the file. -->
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleLocalizations</key>
+  <array>
+    <string>en</string>
+    <string>it</string>
+  </array>
+  <key>CFBundleDisplayName</key>
+  <string>BalanceCraft</string>
+  <key>CFBundleName</key>
+  <string>BalanceCraft</string>
+  <key>CFBundleExecutable</key>
+  <string>BalanceCraft</string>
+  <key>CFBundleIdentifier</key>
+  <string>it.mauromazzieri.balancecraft</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleSignature</key>
+  <string>????</string>
+  <key>CFBundleShortVersionString</key>
+  <string>@SHORT_VERSION@</string>
+  <key>CFBundleVersion</key>
+  <string>@SHORT_VERSION@</string>
+  <key>BalanceCraftVersion</key>
+  <string>@VERSION@</string>
+  <key>CFBundleIconFile</key>
+  <string>BalanceCraft</string>
+  <key>LSApplicationCategoryType</key>
+  <string>public.app-category.productivity</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>11.0</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+  <key>NSSupportsAutomaticGraphicsSwitching</key>
+  <true/>
+  <key>NSRequiresAquaSystemAppearance</key>
+  <false/>
+  <key>UTExportedTypeDeclarations</key>
+  <array>
+    <dict>
+      <key>UTTypeIdentifier</key>
+      <string>it.mauromazzieri.balancecraft.document</string>
+      <key>UTTypeDescription</key>
+      <string>BalanceCraft document</string>
+      <key>UTTypeConformsTo</key>
+      <array>
+        <string>public.json</string>
+      </array>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key>
+        <array>
+          <string>balancecraft</string>
+        </array>
+        <key>public.mime-type</key>
+        <array>
+          <string>application/vnd.balancecraft+json</string>
+        </array>
+      </dict>
+    </dict>
+  </array>
+  <key>NSHumanReadableCopyright</key>
+  <string>Copyright © 2026 Mauro Mazzieri. MIT OR Apache-2.0.</string>
+</dict>
+</plist>

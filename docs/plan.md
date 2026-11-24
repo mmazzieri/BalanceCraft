@@ -115,7 +115,7 @@ Il README e `ATTRIBUTION.md` dichiarano che modello, algoritmo e merge vengono d
 ## Packaging e release (0.2)
 
 - GitHub Actions: CI (fmt, clippy, test, `cargo deny`) su Linux, Windows, macOS.
-- Release al tag: MSI (cargo-wix), DMG universale firmato e notarizzato (Developer ID di Mauro), AppImage, .deb, .rpm, tar.gz; `SHA256SUMS.txt`; nomi dei file come quelli attesi dal launcher.
+- Release al tag: MSI (WiX v5), DMG universale firmato e notarizzato (Developer ID di Mauro), .deb, .rpm, tar.gz; `SHA256SUMS.txt`; nomi dei file come quelli attesi dal launcher. Niente AppImage: il suo runtime include libfuse (LGPL-2.1), fuori dalla politica delle licenze.
 - Associazione dell'estensione `.balancecraft` e del MIME `application/vnd.balancecraft+json`.
 - Secret di firma Apple nei secret del repository: li inserisce Mauro.
 
@@ -145,3 +145,12 @@ Il README e `ATTRIBUTION.md` dichiarano che modello, algoritmo e merge vengono d
 - Prerequisiti nel form dell'attività: a Salva si scrivono le aggiunte e le rimozioni fatte nel form sull'elenco attuale (`applyPrereqDelta` di Cerqua).
 - Restano per la seconda parte (6b): pacchetti per le tre piattaforme, firma macOS, associazione dell'estensione.
 
+
+### Cosa contiene la 0.2, seconda parte (fase 6b)
+
+- Versione 0.2.0 e icona originale (una bilancia su fondo verde), disegnata da `tools/icons.py`: SVG, PNG da 16 a 512 px, `.ico`, la 1024 px per macOS e l'icona della finestra, inclusa nel binario.
+- `packaging/`, ripreso dal launcher (MIT OR Apache-2.0) e riscritto: Linux deb, rpm (nfpm) e tar.gz con `bin/` e `share/`, file `.desktop` e tipo MIME per `*.balancecraft`; macOS `.app` universale in un DMG, firmato e notarizzato quando ci sono i secret, altrimenti con firma ad hoc; Windows MSI (WiX v5, per utente o per macchina, con le proprietà che il launcher passa: `ALLUSERS`, `MSIINSTALLPERUSER`, `INSTALLFOLDER`) e zip portabile. Ogni pacchetto porta licenze, `NOTICE`, `ATTRIBUTION.md` e `THIRD-PARTY-LICENSES.txt` (le licenze dei font di egui).
+- Associazione dell'estensione: ProgId `BalanceCraft.Document` su Windows, MIME `application/vnd.balancecraft+json` su Linux. Su macOS l'UTI è dichiarato ma il doppio clic nel Finder non apre il file: arriva come Apple Event, che winit non passa all'app.
+- `.github/workflows/release.yml`: costruisce tutti i pacchetti a ogni PR che tocca `packaging/` (Linux x86_64 e aarch64 su Ubuntu 22.04, macOS, Windows con installazione e disinstallazione di prova dell'MSI); al tag `v*` crea una release in bozza con i file e `SHA256SUMS.txt`, che Mauro pubblica a mano.
+- Restano a Mauro: i secret Apple (`APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `KEYCHAIN_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`) e la firma Authenticode, oggi assente.
+- AppImage escluso dalle release: il runtime type2 collega libfuse in modo statico, e libfuse è LGPL-2.1. Lo script lo costruisce ancora con `--formats appimage`, per uso locale.
