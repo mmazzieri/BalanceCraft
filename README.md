@@ -35,6 +35,30 @@ On macOS, drag BalanceCraft to Applications. Until a release is signed with a De
 
 Edits are saved on this computer at once and written to the shared file a second later. The app checks the shared file every few seconds and merges what other computers wrote. Copies made by the sync client after a conflict (`name-PC.balancecraft`, `name (1).balancecraft`) are merged and moved to `.balancecraft-merged/`; copies made by hand are listed in the status bar and left alone.
 
+## Command line and agents
+
+Every package also has `balancecraft-cli`, which works on a document without a window, also while the app has it open:
+
+```
+balancecraft-cli --file Life.balancecraft today
+balancecraft-cli --file Life.balancecraft list
+balancecraft-cli --file Life.balancecraft add <area-or-task-id> "Paint the wall" --due 2026-12-01
+balancecraft-cli --help
+```
+
+`--json` prints the whole answer; `BALANCECRAFT_FILE` replaces `--file`. The program keeps its own replica and backups in the user's data folder, or in `--state-dir`.
+
+`balancecraft-cli mcp` offers the same commands to an agent over the Model Context Protocol, on standard input and output, with no network:
+
+```json
+{"mcpServers": {"balancecraft": {"command": "balancecraft-cli", "args": [
+  "--file", "/home/me/OneDrive/Life/Life.balancecraft", "mcp",
+  "--automation-read-root", "/home/me/OneDrive/Life",
+  "--automation-write-root", "/home/me/OneDrive/Life"]}}}
+```
+
+Both folders are required, and the document must be inside the write folder. Links that lead outside are refused, and so are hard links except on Windows, where the check is not available. The folders must not be writable by programs you do not trust: a folder swapped during a command is not detected.
+
 ## Relation with Cerqua
 
 BalanceCraft is the local, open-source sibling of [Cerqua](https://www.mauromazzieri.it/cerqua), a mobile and web app with cloud sync by the same author. The data model, the priority algorithm and the merge come from Cerqua; the code is a new implementation in Rust. Cerqua can import a `.balancecraft` file. The two apps share nothing else: no account, no server.
@@ -59,7 +83,7 @@ The JSON Schema will be published in [`schema/`](schema/), with example files in
 
 ## Build from source
 
-You need a recent stable Rust (1.90 or newer).
+You need a recent stable Rust (1.95 or newer).
 
 ```sh
 cargo run --release -p balancecraft   # the desktop app
