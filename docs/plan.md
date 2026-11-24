@@ -91,6 +91,8 @@ Il punto debole di una riscrittura è la divergenza. Contromisura: vettori di pr
 
 `importData` di Cerqua è un ripristino: sostituisce tutto il cloud dell'account (#118, #131). Per un file BalanceCraft la proposta è un **import con merge**: Cerqua toglie la busta, controlla `formatVersion` e fonde `mergeAppData(locale, file)` senza ritimbrare, quindi nulla di quanto c’è solo in Cerqua viene cancellato (decisione di Mauro del 23/11/2026). La PR su Cerqua aggiunge anche: riconoscimento della busta in `pickAndImport`, MIME `application/vnd.balancecraft+json` e UTI su iOS e Android perché il selettore mostri i `.balancecraft`, messaggio chiaro se la versione del file è troppo nuova.
 
+Fatto nella 1.47.0 di Cerqua (PR #167, 24/11/2026), con una differenza: su iOS e Android il selettore non filtra (`*/*`) invece di dichiarare MIME e UTI, che cambierebbero il fingerprint e richiederebbero una build per gli store. I test dell'import stanno in Cerqua (`importFile.test.ts`, `useStore.test.ts`) con documenti scritti nel test; `fixtures/files/` resta per le fixture di BalanceCraft.
+
 ## Interfaccia (egui)
 
 Quattro viste come i tab di Cerqua, in una finestra con barra laterale:
@@ -154,3 +156,8 @@ Il README e `ATTRIBUTION.md` dichiarano che modello, algoritmo e merge vengono d
 - `.github/workflows/release.yml`: costruisce tutti i pacchetti a ogni PR che tocca `packaging/` (Linux x86_64 e aarch64 su Ubuntu 22.04, macOS, Windows con installazione e disinstallazione di prova dell'MSI); al tag `v*` crea una release in bozza con i file e `SHA256SUMS.txt`, che Mauro pubblica a mano.
 - Restano a Mauro: i secret Apple (`APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `KEYCHAIN_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`) e la firma Authenticode, oggi assente.
 - AppImage escluso dalle release: il runtime type2 collega libfuse in modo statico, e libfuse è LGPL-2.1. Lo script lo costruisce ancora con `--formats appimage`, per uso locale.
+
+### Fase 7 (Cerqua)
+
+- Cerqua 1.47.0 importa i `.balancecraft` con il merge, come descritto in «Import in Cerqua». Le aree di default di un documento nuovo in italiano si uniscono per nome a quelle presenti; con i nomi inglesi restano aree a sé.
+- Nei vettori di conformità e nei test di Cerqua l'area d'esempio che portava il nome di un'azienda reale si chiama «Bottega». Il cambio non tocca il comportamento, e i vettori passano uguali.
