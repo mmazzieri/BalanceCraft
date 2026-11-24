@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BalanceCraft</string>
+    <string name="welcome">Apri il documento .balancecraft che i tuoi computer condividono, o creane uno nuovo.</string>
+    <string name="open_document">Apri un documento</string>
+    <string name="new_document">Nuovo documento</string>
+    <string name="open">Apri</string>
+    <string name="reload">Rileggi</string>
+    <string name="today">Oggi</string>
+    <string name="areas">Aree</string>
+    <string name="new_area">Nuova area</string>
+    <string name="new_task">Nuova attività</string>
+    <string name="task">Attività</string>
+    <string name="name">Nome</string>
+    <string name="due">Scadenza (AAAA-MM-GG)</string>
+    <string name="weight">Peso, da 1 a 100</string>
+    <string name="notes">Note</string>
+    <string name="save">Salva</string>
+    <string name="close">Chiudi</string>
+    <string name="complete">Completa</string>
+    <string name="completed">Attività completata</string>
+    <string name="undo">Annulla</string>
+    <string name="subtask">Aggiungi una sottoattività</string>
+    <string name="hold">Metti in attesa</string>
+    <string name="on_hold">In attesa</string>
+    <string name="resume">Riprendi</string>
+    <string name="delete">Elimina</string>
+    <string name="delete_sure">Elimina con tutto il contenuto</string>
+    <string name="nothing">Niente da fare ora.</string>
+    <string name="offline">Il documento condiviso non è aggiornato. Le modifiche restano sul telefono e verranno scritte al prossimo tentativo.</string>
+</resources>
