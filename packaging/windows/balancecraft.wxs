@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  BalanceCraft MSI (WiX Toolset v5: `dotnet tool install -g wix --version 5.0.2`). Built by
+  package.ps1:
+
+    wix build balancecraft.wxs -arch x64 -d Version=1.2.3 -d BinDir=... -d IconPath=... -o out.msi
+
+  Dual scope: for everyone on the computer (ALLUSERS=1, into Program Files\BalanceCraft) or for
+  the current user only (ALLUSERS=2 MSIINSTALLPERUSER=1, into %LOCALAPPDATA%\Programs), which is
+  what the ArtCraft Launcher asks for. INSTALLFOLDER can be given on the command line. Installs a
+  Start menu shortcut and opens .balancecraft documents. No setup wizard: the package has nothing
+  to choose and no licence to accept (MIT OR Apache-2.0).
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+      Name="BalanceCraft"
+      Manufacturer="Mauro Mazzieri"
+      Version="$(var.Version)"
+      UpgradeCode="C7904C4F-B0AB-4A6C-88B8-ABEED58C6289"
+      Scope="perUserOrMachine"
+      Compressed="yes"
+      Language="1033">
+    <SummaryInformation Description="BalanceCraft: tasks by area of life" Manufacturer="Mauro Mazzieri" />
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+        DowngradeErrorMessage="A newer version of BalanceCraft is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="BalanceCraftIcon.exe" SourceFile="$(var.IconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="BalanceCraftIcon.exe" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/mmazzieri/BalanceCraft" />
+    <Property Id="ARPURLUPDATEINFO" Value="https://github.com/mmazzieri/BalanceCraft/releases" />
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="BalanceCraft" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder" />
+
+    <Feature Id="Main" Title="BalanceCraft" Level="1">
+      <ComponentGroupRef Id="BalanceCraftFiles" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="BalanceCraftFiles">
+      <Component Id="BalanceCraftApp" Directory="INSTALLFOLDER" Guid="18DCC394-0C71-4210-8BE2-96654A8BE644">
+        <File Id="BalanceCraftExe" Source="$(var.BinDir)\balancecraft.exe" KeyPath="yes" />
+        <File Id="BalanceCraftNotice" Source="$(var.BinDir)\NOTICE" />
+        <File Id="BalanceCraftLicenseMit" Source="$(var.BinDir)\LICENSE-MIT" />
+        <File Id="BalanceCraftLicenseApache" Source="$(var.BinDir)\LICENSE-APACHE" />
+        <File Id="BalanceCraftAttribution" Source="$(var.BinDir)\ATTRIBUTION.md" />
+        <File Id="BalanceCraftThirdParty" Source="$(var.BinDir)\THIRD-PARTY-LICENSES.txt" />
+        <!-- Double-click on a .balancecraft file opens it (the app reads its first argument). -->
+        <ProgId Id="BalanceCraft.Document" Description="BalanceCraft document" Icon="BalanceCraftIcon.exe">
+          <Extension Id="balancecraft" ContentType="application/vnd.balancecraft+json">
+            <Verb Id="open" Command="Open" TargetFile="BalanceCraftExe" Argument="&quot;%1&quot;" />
+          </Extension>
+        </ProgId>
+        <!-- Win+R "balancecraft". -->
+        <RegistryValue Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\balancecraft.exe" Value="[#BalanceCraftExe]" Type="string" />
+      </Component>
+      <Component Id="BalanceCraftShortcut" Directory="ProgramMenuFolder" Guid="6790ECFD-ABA0-4B32-88B0-5335433BD723">
+        <Shortcut Id="StartMenuShortcut" Name="BalanceCraft" Description="Tasks by area of life"
+            Target="[#BalanceCraftExe]" WorkingDirectory="INSTALLFOLDER" Icon="BalanceCraftIcon.exe">
+          <ShortcutProperty Key="System.AppUserModel.ID" Value="it.mauromazzieri.balancecraft" />
+        </Shortcut>
+        <RegistryValue Root="HKMU" Key="Software\Mauro Mazzieri\BalanceCraft" Name="StartMenuShortcut" Value="1" Type="integer" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

@@ -4,7 +4,23 @@ BalanceCraft keeps your life in balance, one task at a time. You split your acti
 
 It is a local desktop app written in Rust. Everything you enter lives in one file, `*.balancecraft`, which you can keep in a folder synced by OneDrive, Google Drive, Dropbox or Syncthing and open from several computers. When two computers edit the same file, BalanceCraft merges the changes field by field instead of overwriting them.
 
-> **Status:** 0.1, in development. Today and the Tree work; Areas, Waiting and History, installers and signed releases come with 0.2. The plan is in [docs/plan.md](docs/plan.md) (in Italian).
+> **Status:** 0.2, in development. Today, Tree, Areas, Waiting and History work, and every release comes with installers for Windows, macOS and Linux. The plan is in [docs/plan.md](docs/plan.md) (in Italian).
+
+## Install
+
+Each [release](https://github.com/mmazzieri/BalanceCraft/releases) has these files, listed with their checksums in `SHA256SUMS.txt`:
+
+| System | File |
+|---|---|
+| Windows 10 and 11, x64 | `balancecraft-<version>-windows-x64.msi` (installer) or `-windows-x64-portable.zip` |
+| macOS 11 or newer, Intel and Apple silicon | `balancecraft-<version>-macos-universal.dmg` |
+| Debian, Ubuntu and derivatives | `balancecraft-<version>-linux-<arch>.deb` |
+| Fedora, openSUSE, RHEL | `balancecraft-<version>-linux-<arch>.rpm` |
+| Any Linux with glibc 2.35 or newer | `balancecraft-<version>-linux-<arch>.tar.gz` |
+
+`<arch>` is `x86_64` or `aarch64`. The MSI installs for the current user or for every user of the computer, adds BalanceCraft to the Start menu and opens `.balancecraft` files with a double click; so do the Linux packages, through the MIME type `application/vnd.balancecraft+json`. The Windows files are not signed yet, so SmartScreen may ask for a confirmation the first time.
+
+On macOS, drag BalanceCraft to Applications. Until a release is signed with a Developer ID, macOS refuses to open it at first: right-click it, choose **Open** and confirm. Double-clicking a `.balancecraft` file in Finder does not open it yet; use **File › Open…** or the recent files.
 
 ## Using it
 
@@ -48,7 +64,10 @@ You need a recent stable Rust (1.90 or newer).
 ```sh
 cargo run --release -p balancecraft   # the desktop app
 cargo xtask ci                         # fmt, clippy and tests
+packaging/linux/package.sh            # Linux packages in dist/release (needs nfpm for deb and rpm)
 ```
+
+The packages for all three systems are built by `.github/workflows/release.yml`: on every pull request that touches `packaging/`, and on a `v*` tag, which also creates a draft release with the files and `SHA256SUMS.txt`.
 
 ## License
 

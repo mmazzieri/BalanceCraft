@@ -34,4 +34,19 @@ Fonts bundled in the app through `epaint_default_fonts` 0.37 (egui's `default_fo
 | emoji-icon-font | MIT |
 | egui-icons (subset of emoji-icon-font) | MIT |
 
-The license texts ship with the crate (`fonts/UFL.txt`, `fonts/OFL.txt`, `fonts/Hack-Regular.txt`, `fonts/emoji-icon-font-mit-license.txt`) and go in the release packages with this file.
+The license texts ship with the crate (`fonts/UFL.txt`, `fonts/OFL.txt`, `fonts/Hack-Regular.txt`, `fonts/emoji-icon-font-mit-license.txt`, `fonts/egui-icons.txt`). They are collected, unchanged, in [`THIRD-PARTY-LICENSES.txt`](THIRD-PARTY-LICENSES.txt), which every release package carries together with this file, `NOTICE` and the two license texts.
+
+## Icon
+
+The app icon (a balance scale on a green tile, `assets/app-icon/`) is original work drawn for BalanceCraft by `tools/icons.py` and released under MIT OR Apache-2.0 like the code.
+
+## Packaging
+
+The scripts in `packaging/` and `.github/workflows/release.yml` follow the packaging of the Craft Launcher (`storytold/craft-launcher`, MIT OR Apache-2.0): asset names, the Linux tarball layout, the MSI properties the launcher passes, the macOS signing and notarization steps, and the pinned versions and SHA-256 checksums of appimagetool and its runtime. They were rewritten for BalanceCraft. The packaging tools run only in CI and nothing of them goes into the packages:
+
+| Tool | Version | License |
+|---|---|---|
+| WiX Toolset | 5.0.2 | MS-RL; build tool only: the MSI has no custom actions, so no WiX code goes into it |
+| nfpm | latest from the goreleaser apt repository | MIT |
+
+Releases have no AppImage. The AppImage type2 runtime, which would be the first part of the file, links libfuse statically, and libfuse is LGPL-2.1. `packaging/linux/package.sh --formats appimage` still builds one, with appimagetool 1.9.1 and the runtime 20251108 pinned by checksum, for local use only.

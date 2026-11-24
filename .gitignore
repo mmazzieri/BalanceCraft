@@ -1,3 +1,4 @@
 /target
 *.balancecraft.tmp-*
 /plan/
+/dist
