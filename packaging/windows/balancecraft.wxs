@@ -49,8 +49,10 @@
         <File Id="BalanceCraftLicenseApache" Source="$(var.BinDir)\LICENSE-APACHE" />
         <File Id="BalanceCraftAttribution" Source="$(var.BinDir)\ATTRIBUTION.md" />
         <File Id="BalanceCraftThirdParty" Source="$(var.BinDir)\THIRD-PARTY-LICENSES.txt" />
+        <!-- The document icon: ProgId/@Icon names an installed file, not an Icon element. -->
+        <File Id="BalanceCraftIco" Source="$(var.IconPath)" Name="balancecraft.ico" />
         <!-- Double-click on a .balancecraft file opens it (the app reads its first argument). -->
-        <ProgId Id="BalanceCraft.Document" Description="BalanceCraft document" Icon="BalanceCraftIcon.exe">
+        <ProgId Id="BalanceCraft.Document" Description="BalanceCraft document" Icon="BalanceCraftIco" IconIndex="0">
           <Extension Id="balancecraft" ContentType="application/vnd.balancecraft+json">
             <Verb Id="open" Command="Open" TargetFile="BalanceCraftExe" Argument="&quot;%1&quot;" />
           </Extension>
