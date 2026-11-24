@@ -29,9 +29,14 @@ data class Node(
     val onHold: String? = null,
 )
 
+/** A folder the person picked, and the documents in it. */
+data class Picked(val tree: Uri, val names: List<String>)
+
 data class DocumentState(
     val ready: Boolean = false,
     val open: Boolean = false,
+    /** A folder with no document, or with several, waiting for a choice. */
+    val picked: Picked? = null,
     val busy: Boolean = false,
     val today: List<Today> = emptyList(),
     val tree: List<Node> = emptyList(),
@@ -48,13 +53,14 @@ data class DocumentState(
 object Documents {
     private const val PREFS = "balancecraft"
     private const val ROUNDS = 5
+    private const val NEW_NAME = "Life.balancecraft"
     private val lock = Mutex()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutableState = MutableStateFlow(DocumentState())
     val state: StateFlow<DocumentState> = mutableState
 
     private lateinit var app: Context
-    private var uri: Uri? = null
+    private var place: Place? = null
     private var id: String? = null
 
     fun start(context: Context) {
@@ -62,45 +68,63 @@ object Documents {
         app = context.applicationContext
         scope.launch {
             lock.withLock {
-                uri = prefs().getString("document", null)?.let(Uri::parse)
+                val tree = prefs().getString("tree", null)?.let(Uri::parse)
+                val name = prefs().getString("name", null)
+                if (tree != null && name != null) place = Place(app.contentResolver, tree, name)
                 id = prefs().getString("id", null)
-                if (uri != null && id != null) refresh()
+                if (place != null && id != null) {
+                    runCatching { refresh() }.onFailure { e ->
+                        mutableState.value = mutableState.value.copy(error = e.message ?: e.toString())
+                    }
+                }
                 mutableState.value = mutableState.value.copy(ready = true, open = id != null)
             }
         }
     }
 
-    /** Uses a document the person picked. */
-    fun choose(picked: Uri) = task {
-        val text = read(picked)
-        val found = check(text) ?: throw CoreException("the file is not a BalanceCraft document")
-        use(picked, found)
-        refresh()
+    /** Looks for the documents of a folder the person picked: one is opened, of more the person chooses. */
+    fun choose(tree: Uri) = task {
+        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        app.contentResolver.takePersistableUriPermission(tree, flags)
+        val names = Place.documents(app.contentResolver, tree)
+        if (names.size == 1) open(tree, names.first()) else mutableState.value = mutableState.value.copy(picked = Picked(tree, names))
     }
 
-    /** Puts a new document in a file the person made. */
-    fun create(made: Uri) = task {
-        if (read(made).isNotBlank()) throw CoreException("the file is not empty")
+    /** Opens a document of the folder just picked. */
+    fun pick(name: String) = task { mutableState.value.picked?.let { open(it.tree, name) } }
+
+    /** Makes a document in the folder just picked. */
+    fun create() = task {
+        val tree = mutableState.value.picked?.tree ?: return@task
         val file = File(app.filesDir, "new.balancecraft")
         file.delete()
         Core.ask("new") { put("mirror", file.path); put("state", replicas().path) }
         val text = file.readText()
         file.delete()
         val found = check(text) ?: throw CoreException("the document could not be made")
-        put(mirror(found), text)
+        val made = Place.make(app.contentResolver, tree, NEW_NAME)
         use(made, found)
         put(pending(), text)
         write(made, text)
         refresh()
     }
 
-    private fun use(document: Uri, found: String) {
-        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-        app.contentResolver.takePersistableUriPermission(document, flags)
-        prefs().edit().putString("document", document.toString()).putString("id", found).apply()
-        uri = document
+    fun cancel() {
+        mutableState.value = mutableState.value.copy(picked = null)
+    }
+
+    private fun open(tree: Uri, name: String) {
+        val document = Place(app.contentResolver, tree, name)
+        val found = check(document.read()) ?: throw CoreException("$name is not a BalanceCraft document")
+        use(document, found)
+        refresh()
+    }
+
+    private fun use(document: Place, found: String) {
+        prefs().edit().putString("tree", document.tree.toString()).putString("name", document.name).putString("id", found).apply()
+        place = document
         id = found
-        mutableState.value = mutableState.value.copy(open = true, today = emptyList(), tree = emptyList())
+        mutableState.value = mutableState.value.copy(open = true, picked = null, today = emptyList(), tree = emptyList())
     }
 
     /** Looks at the document again: other computers may have changed it. */
@@ -135,10 +159,11 @@ object Documents {
 
     /** Merges the document in the mirror, runs `command` there, and carries the result back. */
     private fun round(command: JSONObject) {
-        val document = uri ?: return
+        val document = place ?: return
         val mirror = mirror(id ?: return)
         var shared = runCatching { fetch(document) }
-            .onFailure { if (it is CoreException) throw it }
+            // A lost access never comes back by itself: the person must choose the folder again.
+            .onFailure { if (it is CoreException || it is SecurityException) throw it }
             .getOrNull()
         if (shared != null) put(mirror, shared) else if (!mirror.exists()) throw IOException("the document could not be read")
         // Once here, the change is in the replica: what follows may fail and be tried again later.
@@ -169,8 +194,8 @@ object Documents {
     }
 
     /** The shared document. A write of ours that stopped halfway is done again first. */
-    private fun fetch(document: Uri): String {
-        val text = read(document)
+    private fun fetch(document: Place): String {
+        val text = document.read()
         val pending = pending()
         if (pending.exists()) {
             if (check(text) == null) {
@@ -228,15 +253,9 @@ object Documents {
     private fun check(text: String): String? =
         runCatching { (Core.ask("check") { put("text", text) } as JSONObject).getString("document") }.getOrNull()
 
-    private fun read(document: Uri): String =
-        app.contentResolver.openInputStream(document)?.use { it.readBytes().toString(Charsets.UTF_8) }
-            ?: throw IOException("the document could not be opened")
-
-    /** Replaces the document's content and reads it back; [pending] goes when it is there. */
-    private fun write(document: Uri, text: String) {
-        app.contentResolver.openOutputStream(document, "wt")?.use { it.write(text.toByteArray()) }
-            ?: throw IOException("the document could not be written")
-        if (read(document) != text) throw IOException("the document was not written whole")
+    /** Writes the document; [pending] goes when it is there. */
+    private fun write(document: Place, text: String) {
+        document.write(text)
         pending().delete()
     }
 

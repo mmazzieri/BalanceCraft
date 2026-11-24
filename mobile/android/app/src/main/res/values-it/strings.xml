@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">BalanceCraft</string>
-    <string name="welcome">Apri il documento .balancecraft che i tuoi computer condividono, o creane uno nuovo.</string>
-    <string name="open_document">Apri un documento</string>
+    <string name="welcome">Scegli la cartella che contiene il documento .balancecraft condiviso dai tuoi computer, o dove crearne uno nuovo.</string>
+    <string name="choose_folder">Scegli la cartella</string>
     <string name="new_document">Nuovo documento</string>
     <string name="open">Apri</string>
     <string name="reload">Rileggi</string>
@@ -28,4 +28,6 @@
     <string name="delete_sure">Elimina con tutto il contenuto</string>
     <string name="nothing">Niente da fare ora.</string>
     <string name="offline">Il documento condiviso non è aggiornato. Le modifiche restano sul telefono e verranno scritte al prossimo tentativo.</string>
+    <string name="which">Quale documento?</string>
+    <string name="no_document">In questa cartella non c’è nessun documento.</string>
 </resources>

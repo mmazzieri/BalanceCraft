@@ -88,11 +88,8 @@ private data class Form(val node: Node?, val parent: String?)
 @Composable
 private fun App() {
     val state by Documents.state.collectAsStateWithLifecycle()
-    val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { if (it != null) Documents.choose(it) }
-    val make = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) {
-        if (it != null) Documents.create(it)
-    }
-    val choose = { pick.launch(arrayOf("*/*")) }
+    val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { if (it != null) Documents.choose(it) }
+    val choose = { pick.launch(null) }
     if (!state.ready) return
     var areas by rememberSaveable { mutableStateOf(false) }
     var form by remember { mutableStateOf<Form?>(null) }
@@ -145,25 +142,41 @@ private fun App() {
                 Text(stringResource(R.string.offline), Modifier.padding(16.dp, 4.dp), style = MaterialTheme.typography.bodySmall)
             }
             when {
-                !state.open -> Welcome(choose) { make.launch("Life.balancecraft") }
+                !state.open -> Welcome(choose)
                 areas -> Tree(state, edit = { form = it }, complete = complete)
                 else -> TodayList(state, open = { id -> state.tree.firstOrNull { it.id == id }?.let { form = Form(it, null) } }, complete = complete)
             }
         }
     }
+    state.picked?.let { PickDialog(it) }
     form?.let { f -> FormDialog(f, close = { form = null }, addInside = { form = Form(null, it) }) }
 }
 
 @Composable
-private fun Welcome(choose: () -> Unit, make: () -> Unit) {
+private fun PickDialog(picked: Picked) {
+    AlertDialog(
+        onDismissRequest = Documents::cancel,
+        title = { Text(stringResource(R.string.which)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                if (picked.names.isEmpty()) Text(stringResource(R.string.no_document))
+                for (name in picked.names) TextButton(onClick = { Documents.pick(name) }) { Text(name) }
+            }
+        },
+        confirmButton = { TextButton(onClick = { Documents.create() }) { Text(stringResource(R.string.new_document)) } },
+        dismissButton = { TextButton(onClick = Documents::cancel) { Text(stringResource(R.string.close)) } },
+    )
+}
+
+@Composable
+private fun Welcome(choose: () -> Unit) {
     Column(
         Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(stringResource(R.string.welcome), modifier = Modifier.padding(vertical = 16.dp))
-        Button(onClick = choose) { Text(stringResource(R.string.open_document)) }
-        TextButton(onClick = make) { Text(stringResource(R.string.new_document)) }
+        Button(onClick = choose) { Text(stringResource(R.string.choose_folder)) }
     }
 }
 

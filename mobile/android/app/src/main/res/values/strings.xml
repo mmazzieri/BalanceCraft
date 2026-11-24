@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">BalanceCraft</string>
-    <string name="welcome">Open the .balancecraft document your computers share, or make a new one.</string>
-    <string name="open_document">Open a document</string>
+    <string name="welcome">Choose the folder that holds the .balancecraft document your computers share, or where to make a new one.</string>
+    <string name="choose_folder">Choose the folder</string>
     <string name="new_document">New document</string>
     <string name="open">Open</string>
     <string name="reload">Read again</string>
@@ -28,4 +28,6 @@
     <string name="delete_sure">Delete with everything inside</string>
     <string name="nothing">Nothing to do now.</string>
     <string name="offline">The shared document could not be updated. Changes are kept on the phone and written at the next try.</string>
+    <string name="which">Which document?</string>
+    <string name="no_document">There is no document in this folder.</string>
 </resources>

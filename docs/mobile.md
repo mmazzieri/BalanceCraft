@@ -4,7 +4,7 @@
 
 A phone reaches the shared document only through the system, so it keeps a **mirror** of it in the app's own storage. The engine works on the mirror with a replica, as on a computer, and the phone carries the mirror to the document: it reads the document again just before writing, and merges first if it changed. A change is in the replica before anything is written, so it survives a document that cannot be reached. Conflict copies that a sync app makes are merged by the computers.
 
-- **Android**: the document is chosen with the system's picker and written in place, without an atomic rename. What is being written is kept until it is read back; a document left damaged by a write that stopped is written again.
+- **Android**: the folder of the document is chosen with the system's picker (the access to a single file is lost when a sync app replaces it), and the document is written in place, without an atomic rename. What is being written is kept until it is read back; a document left damaged by a write that stopped is written again.
 - **iOS**: reads and writes go through file coordination, and the document is replaced atomically.
 
 ## The bridge
