@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BalanceCraft</string>
+    <string name="welcome">Choose the folder that holds the .balancecraft document your computers share, or where to make a new one.</string>
+    <string name="choose_folder">Choose the folder</string>
+    <string name="new_document">New document</string>
+    <string name="open">Open</string>
+    <string name="reload">Read again</string>
+    <string name="today">Today</string>
+    <string name="areas">Areas</string>
+    <string name="new_area">New area</string>
+    <string name="new_task">New task</string>
+    <string name="task">Task</string>
+    <string name="name">Name</string>
+    <string name="due">Deadline (YYYY-MM-DD)</string>
+    <string name="weight">Weight, 1 to 100</string>
+    <string name="notes">Notes</string>
+    <string name="save">Save</string>
+    <string name="close">Close</string>
+    <string name="complete">Complete</string>
+    <string name="completed">Task completed</string>
+    <string name="undo">Undo</string>
+    <string name="subtask">Add a task inside</string>
+    <string name="hold">Put on hold</string>
+    <string name="on_hold">On hold</string>
+    <string name="resume">Resume</string>
+    <string name="delete">Delete</string>
+    <string name="delete_sure">Delete with everything inside</string>
+    <string name="nothing">Nothing to do now.</string>
+    <string name="offline">The shared document could not be updated. Changes are kept on the phone and written at the next try.</string>
+    <string name="which">Which document?</string>
+    <string name="no_document">There is no document in this folder.</string>
+</resources>
