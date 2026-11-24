@@ -20,7 +20,7 @@ Each [release](https://github.com/mmazzieri/BalanceCraft/releases) has these fil
 
 `<arch>` is `x86_64` or `aarch64`. The MSI installs for the current user or for every user of the computer, adds BalanceCraft to the Start menu and opens `.balancecraft` files with a double click; so do the Linux packages, through the MIME type `application/vnd.balancecraft+json`. The Windows files are not signed yet, so SmartScreen may ask for a confirmation the first time.
 
-On macOS, drag BalanceCraft to Applications. Until a release is signed with a Developer ID, macOS refuses to open it at first: right-click it, choose **Open** and confirm. Double-clicking a `.balancecraft` file in Finder does not open it yet; use **File › Open…** or the recent files.
+On macOS, drag BalanceCraft to Applications. Until a release is signed with a Developer ID and notarized, macOS blocks it the first time because it cannot check it. On macOS 15 or newer, open it once, close the warning, then go to **System Settings › Privacy & Security** and choose **Open Anyway** next to BalanceCraft; on older versions, right-click it, choose **Open** and confirm. From Terminal, `xattr -dr com.apple.quarantine /Applications/BalanceCraft.app` does the same. Double-clicking a `.balancecraft` file in Finder does not open it yet; use **File › Open…** or the recent files.
 
 ## Using it
 
