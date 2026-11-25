@@ -4,7 +4,7 @@ BalanceCraft keeps your life in balance, one task at a time. You split your acti
 
 It is a local desktop app written in Rust. Everything you enter lives in one file, `*.balancecraft`, which you can keep in a folder synced by OneDrive, Google Drive, Dropbox or Syncthing and open from several computers. When two computers edit the same file, BalanceCraft merges the changes field by field instead of overwriting them.
 
-> **Status:** 0.2, in development. Today, Tree, Areas, Waiting and History work, and every release comes with installers for Windows, macOS and Linux. The plan is in [docs/plan.md](docs/plan.md) (in Italian).
+> **Status:** 0.3, in development. Today, Tree, Areas, Waiting and History work, and every release comes with installers for Windows, macOS and Linux. The plan is in [docs/plan.md](docs/plan.md) (in Italian).
 
 ## Install
 
