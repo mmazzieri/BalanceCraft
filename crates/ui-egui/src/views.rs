@@ -1,7 +1,7 @@
 //! The pages: Today, the Tree and Settings. A view reads the document and
 //! pushes [`Action`]s; nothing changes while the frame is drawn.
 
-use crate::app::{Action, UiState, new_id};
+use crate::app::{Action, Theme, UiState, new_id};
 use crate::dialogs::{Dialog, Pulse, Target, TaskMode};
 use crate::forms::{AreaForm, TaskForm};
 use crate::i18n::{Lang, Strings};
@@ -528,6 +528,20 @@ pub fn settings(ui: &mut egui::Ui, data: &AppData, state: &mut UiState, doc_id: 
             });
         if lang != state.lang {
             state.actions.push(Action::SetLang(lang));
+        }
+        ui.end_row();
+
+        ui.label(s.theme);
+        let mut theme = state.theme;
+        let themes = [(Theme::System, s.theme_system), (Theme::Light, s.theme_light), (Theme::Dark, s.theme_dark)];
+        let current = themes.iter().find(|(t, _)| *t == theme).map_or(s.theme_system, |(_, name)| name);
+        egui::ComboBox::from_id_salt("theme").selected_text(current).show_ui(ui, |ui| {
+            for (t, name) in themes {
+                ui.selectable_value(&mut theme, t, name);
+            }
+        });
+        if theme != state.theme {
+            state.actions.push(Action::SetTheme(theme));
         }
         ui.end_row();
 

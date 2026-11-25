@@ -40,6 +40,27 @@ pub struct Prefs {
     pub recent: Vec<PathBuf>,
     /// The document open at the last exit, reopened at start.
     pub last: Option<PathBuf>,
+    /// Light or dark colours, or those of the system (the default).
+    pub theme: Theme,
+}
+
+/// The colours of the window: those of the system, or always light or dark.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Theme {
+    #[default]
+    System,
+    Light,
+    Dark,
+}
+
+impl Theme {
+    pub fn preference(self) -> egui::ThemePreference {
+        match self {
+            Theme::System => egui::ThemePreference::System,
+            Theme::Light => egui::ThemePreference::Light,
+            Theme::Dark => egui::ThemePreference::Dark,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -76,11 +97,13 @@ pub enum Action {
     Completed { task_id: String, name: String },
     Undo(String),
     SetLang(Lang),
+    SetTheme(Theme),
 }
 
 /// Interface state that does not belong to the document.
 pub struct UiState {
     pub lang: Lang,
+    pub theme: Theme,
     pub view: View,
     pub area_filter: Option<String>,
     pub dialog: Option<Dialog>,
@@ -136,11 +159,14 @@ impl BalanceCraftApp {
     pub fn new(cc: &eframe::CreationContext<'_>, open: Option<PathBuf>) -> Self {
         let prefs: Prefs = cc.storage.and_then(|s| eframe::get_value(s, PREFS_KEY)).unwrap_or_default();
         let lang = prefs.lang.unwrap_or_else(Lang::detect);
+        let theme = prefs.theme;
+        cc.egui_ctx.set_theme(theme.preference());
         let mut app = BalanceCraftApp {
             prefs,
             store: None,
             ui: UiState {
                 lang,
+                theme,
                 view: View::Today,
                 area_filter: None,
                 dialog: None,
@@ -281,7 +307,7 @@ impl BalanceCraftApp {
         }
     }
 
-    fn apply_actions(&mut self, time: f64) {
+    fn apply_actions(&mut self, ctx: &egui::Context, time: f64) {
         for action in std::mem::take(&mut self.ui.actions) {
             match action {
                 Action::Run(cmd) => self.run(&cmd, time),
@@ -296,6 +322,11 @@ impl BalanceCraftApp {
                 Action::SetLang(lang) => {
                     self.ui.lang = lang;
                     self.prefs.lang = Some(lang);
+                }
+                Action::SetTheme(theme) => {
+                    self.ui.theme = theme;
+                    self.prefs.theme = theme;
+                    ctx.set_theme(theme.preference());
                 }
             }
         }
@@ -470,7 +501,7 @@ impl eframe::App for BalanceCraftApp {
         if let Some(store) = &self.store {
             dialogs::show(&ctx, store.data(), &mut self.ui);
         }
-        self.apply_actions(time);
+        self.apply_actions(&ctx, time);
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
@@ -480,5 +511,20 @@ impl eframe::App for BalanceCraftApp {
         let mut prefs = self.prefs.clone();
         prefs.last = self.store.as_ref().map(|s| s.shared_path().to_owned());
         eframe::set_value(storage, PREFS_KEY, &prefs);
+    }
+}
+
+#[cfg(test)]
+mod theme_tests {
+    use super::{Prefs, Theme};
+
+    #[test]
+    fn theme_follows_the_system_until_chosen() {
+        // Preferences saved before the theme existed open with the system's colours.
+        let old: Prefs = serde_json::from_str(r#"{"recent":[]}"#).unwrap();
+        assert_eq!(old.theme, Theme::System);
+        let chosen = Prefs { theme: Theme::Dark, ..Prefs::default() };
+        let back: Prefs = serde_json::from_str(&serde_json::to_string(&chosen).unwrap()).unwrap();
+        assert_eq!(back.theme, Theme::Dark);
     }
 }

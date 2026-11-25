@@ -541,6 +541,7 @@ dependencies = [
  "egui",
  "rfd",
  "serde",
+ "serde_json",
  "uuid",
 ]
 
