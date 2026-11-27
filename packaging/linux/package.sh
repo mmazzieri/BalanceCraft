@@ -58,7 +58,6 @@ install -Dm644 "$HERE/$APP_ID.desktop" "$STAGE/usr/share/applications/$APP_ID.de
 install -Dm644 "$HERE/balancecraft-mime.xml" "$STAGE/usr/share/mime/packages/$APP_ID.xml"
 mkdir -p "$STAGE/usr/share/icons"
 cp -R "$ROOT/assets/app-icon/hicolor" "$STAGE/usr/share/icons/"
-install -Dm644 "$ROOT/assets/app-icon/balancecraft.svg" "$STAGE/usr/share/icons/hicolor/scalable/apps/$APP_ID.svg"
 mkdir -p "$STAGE/usr/share/doc/$PKG"
 copy_docs "$STAGE/usr/share/doc/$PKG"
 if command -v desktop-file-validate >/dev/null; then

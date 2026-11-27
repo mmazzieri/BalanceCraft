@@ -43,7 +43,7 @@ The license texts ship with the crate (`fonts/UFL.txt`, `fonts/OFL.txt`, `fonts/
 
 ## Icon
 
-The app icon (a balance scale on a green tile, `assets/app-icon/`) is original work drawn for BalanceCraft by `tools/icons.py` and released under MIT OR Apache-2.0 like the code.
+The app icon (an engraved red deer on a green tile, `assets/app-icon/balancecraft-source.png`) was made by Mauro Mazzieri with Google Gemini (image generation, November 2026) for BalanceCraft, and is released under MIT OR Apache-2.0 like the code. `tools/icons.py` scales it to every size in `assets/app-icon/` and `mobile/`.
 
 ## Packaging
 
