@@ -3,6 +3,7 @@
 
 mod app;
 mod dialogs;
+mod focus;
 mod forms;
 mod i18n;
 mod theme;

@@ -426,23 +426,28 @@ fn pulse(ui: &mut egui::Ui, p: &mut Pulse, data: &AppData, s: &'static Strings, 
     if let Some(edit) = &mut p.next {
         ui.add(egui::TextEdit::singleline(&mut edit.text).desired_width(400.0));
         ui.horizontal(|ui| {
-            ui.label(s.linked_task);
+            let name = ui.label(s.linked_task);
             let label = |id: &Option<String>| {
                 id.as_ref()
                     .and_then(|id| candidates.iter().find(|(c, _)| c == id))
                     .map_or_else(|| s.no_task.to_owned(), |(_, l)| l.clone())
             };
-            egui::ComboBox::from_id_salt("next-task").selected_text(label(&edit.task)).width(300.0).show_ui(ui, |ui| {
-                ui.selectable_value(&mut edit.task, None, s.no_task);
-                for (id, l) in &candidates {
-                    if ui.selectable_label(edit.task.as_deref() == Some(id), l).clicked() {
-                        edit.task = Some(id.clone());
-                        if edit.text.trim().is_empty() {
-                            edit.text = l.rsplit(" › ").next().unwrap_or(l).to_owned();
+            egui::ComboBox::from_id_salt("next-task")
+                .selected_text(label(&edit.task))
+                .width(300.0)
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut edit.task, None, s.no_task);
+                    for (id, l) in &candidates {
+                        if ui.selectable_label(edit.task.as_deref() == Some(id), l).clicked() {
+                            edit.task = Some(id.clone());
+                            if edit.text.trim().is_empty() {
+                                edit.text = l.rsplit(" › ").next().unwrap_or(l).to_owned();
+                            }
                         }
                     }
-                }
-            });
+                })
+                .response
+                .labelled_by(name.id);
         });
         ui.horizontal(|ui| {
             if ui.button(s.set).clicked() {
@@ -564,21 +569,28 @@ fn pulse(ui: &mut egui::Ui, p: &mut Pulse, data: &AppData, s: &'static Strings, 
 }
 
 pub fn show(ctx: &egui::Context, data: &AppData, state: &mut UiState) {
-    let Some(mut d) = state.dialog.take() else { return };
+    let Some(mut d) = state.dialog.take() else {
+        state.focus.no_dialog(ctx);
+        return;
+    };
     let s = state.s();
     if !target_alive(&d, data) {
         d = Dialog::Notice(s.target_gone);
     }
     let mut actions = Vec::new();
+    state.focus.before_dialog(ctx);
     let response = egui::Modal::new(egui::Id::unique("dialog")).show(ctx, |ui| {
         ui.set_max_width(440.0);
         body(ui, &mut d, data, s, &mut actions)
     });
     if response.inner && !response.should_close() {
         state.dialog = Some(d);
-    } else if let Dialog::Pulse(p) = &mut d {
-        // Closing writes the status being typed, as Cerqua does.
-        p.flush_status(&mut actions);
+    } else {
+        if let Dialog::Pulse(p) = &mut d {
+            // Closing writes the status being typed, as Cerqua does.
+            p.flush_status(&mut actions);
+        }
+        state.focus.dialog_closed(ctx);
     }
     state.actions.extend(actions);
 }

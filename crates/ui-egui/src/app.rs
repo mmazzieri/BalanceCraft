@@ -1,6 +1,7 @@
 //! The application: open document, sync loop, menus and status bar.
 
 use crate::dialogs::{self, Dialog};
+use crate::focus::Region;
 use crate::i18n::{Lang, Strings};
 use crate::views;
 use balancecraft_engine::commands::{Command, Ctx, NewArea, apply};
@@ -112,6 +113,8 @@ pub struct UiState {
     pub actions: Vec<Action>,
     /// Text of the global warning field in Settings.
     pub global_advance: Option<String>,
+    /// F6 between regions, and the focus of dialogs.
+    pub focus: crate::focus::Focus,
 }
 
 impl UiState {
@@ -186,6 +189,7 @@ impl BalanceCraftApp {
                 toast: None,
                 actions: Vec::new(),
                 global_advance: None,
+                focus: crate::focus::Focus::default(),
             },
             status: Status::Saved,
             manual_copies: Vec::new(),
@@ -330,7 +334,10 @@ impl BalanceCraftApp {
         for action in std::mem::take(&mut self.ui.actions) {
             match action {
                 Action::Run(cmd) => self.run(&cmd, time),
-                Action::Open(d) => self.ui.dialog = Some(d),
+                Action::Open(d) => {
+                    self.ui.dialog = Some(d);
+                    self.ui.focus.dialog_opened();
+                }
                 Action::Completed { task_id, name } => {
                     self.ui.toast = Some(Toast { task_id, name, until: time + TOAST_SECS });
                 }
@@ -491,17 +498,28 @@ impl eframe::App for BalanceCraftApp {
         self.tick(time);
         ctx.request_repaint_after(Duration::from_secs(1));
 
-        egui::Panel::top("menu").show(ui, |ui| {
+        let mut regions = vec![Region::Menu, Region::Page];
+        if self.ui.toast.is_some() {
+            regions.push(Region::Status);
+        }
+        self.ui.focus.begin_pass(&ctx, &regions);
+
+        let menu = egui::Panel::top("menu").show(ui, |ui| {
+            self.ui.focus.enter(ui, Region::Menu);
             ui.horizontal(|ui| self.menu(ui));
         });
-        egui::Panel::bottom("status").show(ui, |ui| {
+        self.ui.focus.drawn(Region::Menu, menu.response.rect);
+        let status = egui::Panel::bottom("status").show(ui, |ui| {
+            self.ui.focus.enter(ui, Region::Status);
             if self.ui.toast.is_some() {
                 self.toast(ui);
                 ui.separator();
             }
             self.status_bar(ui);
         });
-        egui::CentralPanel::default().show(ui, |ui| {
+        self.ui.focus.drawn(Region::Status, status.response.rect);
+        let page = egui::CentralPanel::default().show(ui, |ui| {
+            self.ui.focus.enter(ui, Region::Page);
             let Some(store) = &self.store else {
                 self.empty(ui);
                 return;
@@ -517,8 +535,10 @@ impl eframe::App for BalanceCraftApp {
                 View::Settings => views::settings(ui, data, &mut self.ui, &meta.0, &meta.1),
             });
         });
-        if let Some(store) = &self.store {
-            dialogs::show(&ctx, store.data(), &mut self.ui);
+        self.ui.focus.drawn(Region::Page, page.response.rect);
+        match &self.store {
+            Some(store) => dialogs::show(&ctx, store.data(), &mut self.ui),
+            None => self.ui.focus.no_dialog(&ctx),
         }
         self.apply_actions(&ctx, time);
     }
