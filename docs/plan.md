@@ -129,7 +129,7 @@ BalanceCraft segue le regole condivise delle Craft App: la copia di `standards/a
 Standard seguiti:
 
 - `never-crash` e house rules Rust: `unsafe` vietato (salvo `crates/ffi/src/android.rs` e `c.rs`), clippy `-D warnings`, `unwrap`/`expect`/`panic` negati fuori dai test; un file oltre 64 MB non si legge, le attività stanno al massimo 32 livelli sotto la loro area, e un documento che il lettore rifiuterebbe non si scrive.
-- `licences.md`: dipendenze e asset nell'allowlist, controllati da `cargo deny check`; `ATTRIBUTION.md` e `THIRD-PARTY-LICENSES.txt` nei pacchetti.
+- `licences.md`: le licenze delle dipendenze Rust sono nell'allowlist, controllata da `cargo deny check`; gli asset (icona, font di egui, vettori di conformità) non passano da `cargo deny`: la loro provenienza e licenza sono scritte in `ATTRIBUTION.md` e si verificano a mano in revisione. `ATTRIBUTION.md` e `THIRD-PARTY-LICENSES.txt` sono nei pacchetti.
 - `time.md`: date con `chrono`, orologio passato dall'esterno all'engine.
 - `clean-room.md`: nessun codice, testo, icona o asset di prodotti proprietari; il comportamento di Cerqua è la specifica, verificata dai vettori di conformità.
 - `naming.md`: nessun nome di prodotto o funzione di altre aziende nelle etichette. I servizi di sincronizzazione (OneDrive, Google Drive, Dropbox, Syncthing) compaiono solo come indicazioni di compatibilità, come permette la regola 3. Il nome generico del pacchetto Linux era «Life balance planner», troppo vicino al nome di un prodotto: ora è «Planner by areas of life» (verifica del 28/11/2026).
