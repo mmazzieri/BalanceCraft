@@ -209,3 +209,19 @@ fn the_shared_file_is_not_written_when_its_replica_would_not_read_back() {
     }
     assert!(found, "some depth passes the document check and fails the replica's");
 }
+
+#[test]
+fn a_refused_edit_is_not_kept() {
+    let dir = tempfile::tempdir().unwrap();
+    let shared = dir.path().join("Life.balancecraft");
+    let mut s =
+        Store::create(&shared, &dir.path().join("replicas"), GEN, data(vec![area("a", "Home", T0)]), Now(T0)).unwrap();
+    let mut deep = serde_json::json!(1);
+    for _ in 0..200 {
+        deep = serde_json::json!([deep]);
+    }
+    let mut bad = s.data().clone();
+    bad.extra.insert("deep".into(), deep);
+    assert!(s.set_data(bad).is_err());
+    assert!(s.data().extra.get("deep").is_none(), "the store keeps the last accepted data");
+}

@@ -304,8 +304,13 @@ impl Store {
     /// Replaces the document after an edit. The replica is written at once; the
     /// shared file at the next [`Store::sync`].
     pub fn set_data(&mut self, data: AppData) -> Result<(), StoreError> {
-        self.replica.document.data = data;
-        self.save_replica()
+        let previous = std::mem::replace(&mut self.replica.document.data, data);
+        let saved = self.save_replica();
+        if saved.is_err() {
+            // A refused edit is not kept in memory either.
+            self.replica.document.data = previous;
+        }
+        saved
     }
 
     fn save_replica(&self) -> Result<(), StoreError> {
@@ -352,7 +357,12 @@ impl Store {
             doc.generator = self.generator.clone();
             doc.saved_at = now.rfc3339();
             let bytes = write(&doc)?;
-            let candidate = Replica { document: doc.clone(), disk_hash: hash(&bytes), ..self.replica.clone() };
+            let candidate = Replica {
+                document: doc.clone(),
+                disk_hash: hash(&bytes),
+                last_merged_at: now.ms(),
+                ..self.replica.clone()
+            };
             replica_bytes(&candidate)?;
             self.backup(&disk_bytes, now)?;
             write_atomic(&self.shared, &bytes)?;
