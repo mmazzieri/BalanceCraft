@@ -789,6 +789,7 @@ mod a11y_tests {
             toast: None,
             actions: Vec::new(),
             global_advance: None,
+            focus: crate::focus::Focus::default(),
         }
     }
 
