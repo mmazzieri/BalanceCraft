@@ -144,8 +144,8 @@ fn buttons(ui: &mut egui::Ui, s: &Strings, ok: &str) -> (bool, bool) {
 }
 
 fn field(ui: &mut egui::Ui, label: &str, text: &mut String, hint: &str) {
-    ui.label(label);
-    ui.add(egui::TextEdit::singleline(text).hint_text(hint).desired_width(280.0));
+    let name = ui.label(label);
+    ui.add(egui::TextEdit::singleline(text).hint_text(hint).desired_width(280.0)).labelled_by(name.id);
     ui.end_row();
 }
 
@@ -167,8 +167,9 @@ fn body(ui: &mut egui::Ui, d: &mut Dialog, data: &AppData, s: &'static Strings, 
                 field(ui, s.due_date, &mut form.due, s.date_hint);
                 field(ui, s.start_date, &mut form.start, s.date_hint);
                 field(ui, s.advance_days, &mut form.advance, &format!("{} ({inherited})", s.inherited));
-                ui.label(s.notes);
-                ui.add(egui::TextEdit::multiline(&mut form.notes).desired_rows(3).desired_width(280.0));
+                let name = ui.label(s.notes);
+                ui.add(egui::TextEdit::multiline(&mut form.notes).desired_rows(3).desired_width(280.0))
+                    .labelled_by(name.id);
                 ui.end_row();
             });
             let own = match mode {
@@ -264,8 +265,8 @@ fn body(ui: &mut egui::Ui, d: &mut Dialog, data: &AppData, s: &'static Strings, 
             ui.heading(s.put_on_hold);
             ui.label(RichText::new(name.as_str()).strong());
             ui.add_space(8.0);
-            ui.label(s.reason);
-            let r = ui.add(egui::TextEdit::singleline(reason).desired_width(280.0));
+            let name = ui.label(s.reason);
+            let r = ui.add(egui::TextEdit::singleline(reason).desired_width(280.0)).labelled_by(name.id);
             r.request_focus();
             let enter = r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
             let (ok, cancel) = buttons(ui, s, s.put_on_hold);
@@ -304,7 +305,7 @@ fn body(ui: &mut egui::Ui, d: &mut Dialog, data: &AppData, s: &'static Strings, 
         Dialog::Move { id, name, filter } => {
             ui.heading(s.move_to);
             ui.label(RichText::new(name.as_str()).strong());
-            ui.add(egui::TextEdit::singleline(filter).hint_text("…").desired_width(320.0));
+            ui.add(egui::TextEdit::singleline(filter).hint_text(s.filter).desired_width(320.0));
             let moving = find_visible_task(&data.areas, id).map(|(n, _)| n);
             let mut chosen = None;
             egui::ScrollArea::vertical().max_height(360.0).show(ui, |ui| {
@@ -410,21 +411,23 @@ fn pulse(ui: &mut egui::Ui, p: &mut Pulse, data: &AppData, s: &'static Strings, 
     });
     ui.add_space(8.0);
 
-    ui.label(RichText::new(s.status).strong());
-    let r = ui.add(egui::TextEdit::singleline(&mut p.status).hint_text(s.no_status).desired_width(400.0));
+    let name = ui.label(RichText::new(s.status).strong());
+    let r = ui
+        .add(egui::TextEdit::singleline(&mut p.status).hint_text(s.no_status).desired_width(400.0))
+        .labelled_by(name.id);
     if r.lost_focus() {
         p.flush_status(actions);
     }
     ui.add_space(8.0);
 
-    ui.label(RichText::new(s.next_action).strong());
+    let next_name = ui.label(RichText::new(s.next_action).strong());
     let candidates = leaf_options(data, Some(&p.area_id));
     let done = completed_ids(data);
     let candidates: Vec<(String, String)> = candidates.into_iter().filter(|(id, _)| !done.contains(id)).collect();
     let mut set_next = None;
     let mut close_next = false;
     if let Some(edit) = &mut p.next {
-        ui.add(egui::TextEdit::singleline(&mut edit.text).desired_width(400.0));
+        ui.add(egui::TextEdit::singleline(&mut edit.text).desired_width(400.0)).labelled_by(next_name.id);
         ui.horizontal(|ui| {
             let name = ui.label(s.linked_task);
             let label = |id: &Option<String>| {
@@ -497,9 +500,11 @@ fn pulse(ui: &mut egui::Ui, p: &mut Pulse, data: &AppData, s: &'static Strings, 
     }
     ui.add_space(8.0);
 
-    ui.label(RichText::new(s.log).strong());
+    let log_name = ui.label(RichText::new(s.log).strong());
     ui.horizontal(|ui| {
-        let r = ui.add(egui::TextEdit::singleline(&mut p.log_text).hint_text(s.log_hint).desired_width(320.0));
+        let r = ui
+            .add(egui::TextEdit::singleline(&mut p.log_text).hint_text(s.log_hint).desired_width(320.0))
+            .labelled_by(log_name.id);
         let enter = r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
         if (ui.button(s.add).clicked() || enter) && !p.log_text.trim().is_empty() {
             actions.push(Action::Run(Command::LogAreaAction {
@@ -518,7 +523,7 @@ fn pulse(ui: &mut egui::Ui, p: &mut Pulse, data: &AppData, s: &'static Strings, 
                 Some(edit) if edit.id == e.id => {
                     ui.horizontal(|ui| {
                         ui.add(egui::TextEdit::singleline(&mut edit.date).desired_width(120.0).hint_text(s.date_hint));
-                        ui.add(egui::TextEdit::singleline(&mut edit.text).desired_width(220.0));
+                        ui.add(egui::TextEdit::singleline(&mut edit.text).desired_width(220.0).hint_text(s.log_hint));
                     });
                     ui.horizontal(|ui| {
                         if ui.button(s.save).clicked() {
