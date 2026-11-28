@@ -142,6 +142,14 @@ pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), StoreError> {
     Ok(())
 }
 
+/// The bytes of a replica; as [`write`], never one that would not be read back.
+fn replica_bytes(replica: &Replica) -> Result<Vec<u8>, StoreError> {
+    let bytes = serde_json::to_vec(replica)?;
+    serde_json::from_slice::<Replica>(&bytes)?;
+    crate::fits(&bytes)?;
+    Ok(bytes)
+}
+
 fn read_doc(path: &Path, generator: &str, now: Now) -> Result<(Document, Origin, Vec<u8>), StoreError> {
     let bytes = crate::read_file(path).map_err(io_err(path))?;
     let (doc, origin) =
@@ -196,7 +204,6 @@ impl Store {
         let doc = crate::new_document(generator, &now.rfc3339(), data);
         let lock = Self::lock(replica_dir, &doc.document_id)?;
         let bytes = write(&doc)?;
-        write_atomic(shared, &bytes)?;
         let replica = Replica {
             document_id: doc.document_id.clone(),
             shared_path: shared.to_owned(),
@@ -204,6 +211,9 @@ impl Store {
             disk_hash: hash(&bytes),
             document: doc,
         };
+        // The replica nests the document one level deeper: check it before the shared file exists.
+        replica_bytes(&replica)?;
+        write_atomic(shared, &bytes)?;
         let store = Store {
             shared: shared.to_owned(),
             replica_dir: replica_dir.to_owned(),
@@ -239,6 +249,10 @@ impl Store {
                     document: doc.clone(),
                 },
             },
+            // Too large or unreadable for another reason: it may hold edits not yet synced.
+            Err(e) if e.kind() != io::ErrorKind::NotFound => {
+                return Err(StoreError::Io { path: rpath, source: e });
+            }
             Err(_) => Replica {
                 document_id: doc.document_id.clone(),
                 shared_path: shared.to_owned(),
@@ -295,9 +309,7 @@ impl Store {
     }
 
     fn save_replica(&self) -> Result<(), StoreError> {
-        let bytes = serde_json::to_vec(&self.replica)?;
-        // As `write`: never a replica that would not be read back.
-        serde_json::from_slice::<Replica>(&bytes)?;
+        let bytes = replica_bytes(&self.replica)?;
         write_atomic(&Self::replica_path(&self.replica_dir, &self.replica.document_id), &bytes)
     }
 
@@ -340,6 +352,8 @@ impl Store {
             doc.generator = self.generator.clone();
             doc.saved_at = now.rfc3339();
             let bytes = write(&doc)?;
+            let candidate = Replica { document: doc.clone(), disk_hash: hash(&bytes), ..self.replica.clone() };
+            replica_bytes(&candidate)?;
             self.backup(&disk_bytes, now)?;
             write_atomic(&self.shared, &bytes)?;
             self.replica.disk_hash = hash(&bytes);

@@ -165,3 +165,47 @@ fn opens_a_cerqua_backup_as_a_new_document() {
     assert_eq!(meta.fields["name"], Num(1_763_900_000_000.0));
     assert!(file.exists());
 }
+
+#[test]
+fn a_replica_too_large_to_read_is_kept() {
+    let dir = tempfile::tempdir().unwrap();
+    let shared = dir.path().join("Life.balancecraft");
+    let replicas = dir.path().join("replicas");
+    let id = {
+        let s = Store::create(&shared, &replicas, GEN, data(vec![area("a", "Home", T0)]), Now(T0)).unwrap();
+        s.document_id().to_owned()
+    };
+    let rpath = Store::replica_path(&replicas, &id);
+    File::options().write(true).open(&rpath).unwrap().set_len(crate::MAX_FILE_BYTES + 1).unwrap();
+    assert!(Store::open(&shared, &replicas, GEN, Now(T0 + 1)).is_err());
+    assert_eq!(fs::metadata(&rpath).unwrap().len(), crate::MAX_FILE_BYTES + 1, "the replica is left as it was");
+}
+
+/// A document at the reader's last level: the replica, one level deeper, would not
+/// read back, so neither file is written.
+#[test]
+fn the_shared_file_is_not_written_when_its_replica_would_not_read_back() {
+    let dir = tempfile::tempdir().unwrap();
+    let shared = dir.path().join("Life.balancecraft");
+    let replicas = dir.path().join("replicas");
+    let mut found = false;
+    for levels in 100..128 {
+        let mut deep = serde_json::json!(1);
+        for _ in 0..levels {
+            deep = serde_json::json!([deep]);
+        }
+        let mut d = data(vec![]);
+        d.extra.insert("deep".into(), deep);
+        let doc = crate::new_document(GEN, "", d.clone());
+        if write(&doc).is_err() {
+            break;
+        }
+        if Store::create(&shared, &replicas, GEN, d, Now(T0)).is_err() {
+            assert!(!shared.exists(), "{levels}: the shared file was written without its replica");
+            found = true;
+            break;
+        }
+        let _ = fs::remove_file(&shared);
+    }
+    assert!(found, "some depth passes the document check and fails the replica's");
+}

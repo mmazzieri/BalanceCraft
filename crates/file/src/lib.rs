@@ -134,7 +134,19 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, serde_json::Error> {
     let mut out = serde_json::to_vec_pretty(doc)?;
     serde_json::from_slice::<Value>(&out)?;
     out.push(b'\n');
+    fits(&out)?;
     Ok(out)
+}
+
+/// Refuses bytes that [`read_file`] would refuse for their size.
+pub(crate) fn fits(bytes: &[u8]) -> Result<(), serde_json::Error> {
+    if bytes.len() as u64 > MAX_FILE_BYTES {
+        return Err(serde::ser::Error::custom(format!(
+            "the document would be larger than {} MB",
+            MAX_FILE_BYTES / (1024 * 1024)
+        )));
+    }
+    Ok(())
 }
 
 #[cfg(test)]
