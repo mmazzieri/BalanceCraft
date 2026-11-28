@@ -81,6 +81,8 @@ fn dialogs_of(data: &AppData, s: &'static crate::i18n::Strings) -> Vec<Dialog> {
 }
 
 fn draw(ui: &mut egui::Ui, (data, st): &mut (AppData, UiState)) {
+    // The app's own colours, as `BalanceCraftApp::new` installs them.
+    crate::theme::install(ui.ctx());
     egui::CentralPanel::default().show(ui, |ui| match st.view {
         View::Today => views::today(ui, data, st),
         View::Tree => views::tree(ui, data, st),
@@ -96,7 +98,11 @@ fn draw(ui: &mut egui::Ui, (data, st): &mut (AppData, UiState)) {
 /// Runs one screen; `run` panics when a control has no name.
 fn check(case: String, st: UiState, data: AppData, failures: &mut Vec<String>) {
     let run = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        let mut h = Harness::new_ui_state(draw, (data, st));
+        let theme = match st.theme {
+            Theme::Dark => egui::Theme::Dark,
+            _ => egui::Theme::Light,
+        };
+        let mut h = Harness::builder().with_theme(theme).build_ui_state(draw, (data, st));
         h.run();
     }));
     if run.is_err() {
