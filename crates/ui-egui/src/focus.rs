@@ -33,6 +33,9 @@ pub struct Focus {
     seen: Vec<(Region, Rect)>,
     /// The region that takes the focus when it is drawn in this pass.
     pending: Option<Region>,
+    /// The region F6 last moved to: where F6 goes on from when that region
+    /// had nothing to focus.
+    last: Option<Region>,
     /// Where the focus was when the dialog opened.
     back: Option<Id>,
     dialog: DialogStep,
@@ -52,9 +55,15 @@ impl Focus {
         if !next && !prev {
             return;
         }
-        let here = ctx.memory(|m| m.focused()).and_then(|id| ctx.read_response(id)).and_then(|r| {
-            self.rects.iter().find(|(_, rect)| rect.contains(r.rect.center())).map(|(region, _)| *region)
-        });
+        let focused = ctx.memory(|m| m.focused());
+        let here = match focused {
+            Some(id) => ctx.read_response(id).and_then(|r| {
+                self.rects.iter().find(|(_, rect)| rect.contains(r.rect.center())).map(|(region, _)| *region)
+            }),
+            // A region with nothing to focus (an empty list) still counts as
+            // where the user is, so the next F6 does not start over.
+            None => self.last,
+        };
         let n = regions.len();
         let at = here.and_then(|h| regions.iter().position(|r| *r == h));
         let to = match (at, next) {
@@ -64,6 +73,7 @@ impl Focus {
             (None, false) => n - 1,
         };
         self.pending = regions.get(to).copied();
+        self.last = self.pending;
         ctx.request_repaint();
     }
 
@@ -164,6 +174,8 @@ mod tests {
     struct Window {
         focus: Focus,
         dialog: bool,
+        /// The page shows only text, as an empty list does.
+        empty: bool,
     }
 
     /// Three regions laid out as in the app, and a dialog opened by a button
@@ -183,6 +195,10 @@ mod tests {
         w.focus.drawn(Region::Status, status.response.rect);
         let page = egui::CentralPanel::default().show(ui, |ui| {
             w.focus.enter(ui, Region::Page);
+            if w.empty {
+                ui.label("Nothing here");
+                return;
+            }
             if ui.button("Edit").clicked() {
                 w.dialog = true;
                 w.focus.dialog_opened();
@@ -227,6 +243,17 @@ mod tests {
         press(&mut h, Key::F6, false);
         assert!(focused(&h, "File"));
         press(&mut h, Key::F6, true);
+        assert!(focused(&h, "Undo"));
+    }
+
+    #[test]
+    fn f6_goes_past_a_page_with_nothing_to_focus() {
+        let mut h = Harness::new_ui_state(draw, Window { empty: true, ..Window::default() });
+        h.run();
+        press(&mut h, Key::F6, false);
+        assert!(focused(&h, "File"));
+        press(&mut h, Key::F6, false);
+        press(&mut h, Key::F6, false);
         assert!(focused(&h, "Undo"));
     }
 

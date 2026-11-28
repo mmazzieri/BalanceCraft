@@ -24,6 +24,11 @@ pub fn area_color(hex: &str) -> Color32 {
 
 /// Gives a button that repeats on every row a name that says which row:
 /// "Complete: Buy bread". The name starts with what the button shows.
+/// A list row whose widgets take their ids from `key`, not from where the row is.
+fn row(ui: &mut egui::Ui, key: &str, add: impl FnOnce(&mut egui::Ui)) {
+    ui.push_id(key, |ui| ui.horizontal(add));
+}
+
 fn row_button(ui: &mut egui::Ui, label: &str, item: &str) -> egui::Response {
     let r = ui.button(label);
     let enabled = r.enabled();
@@ -195,7 +200,9 @@ pub fn today(ui: &mut egui::Ui, data: &AppData, state: &mut UiState) {
     for item in list.iter().filter(|i| filter.as_ref().is_none_or(|f| *f == i.area.id)) {
         shown += 1;
         let task = item.task;
-        ui.horizontal(|ui| {
+        // Keyed by the task, so a row's buttons keep their ids when the list
+        // changes under an open dialog and the focus goes back to the right one.
+        row(ui, &task.id, |ui| {
             swatch(ui, area_color(&item.area.color));
             ui.vertical(|ui| {
                 ui.label(RichText::new(&task.name).strong());
@@ -701,7 +708,7 @@ pub fn waiting(ui: &mut egui::Ui, data: &AppData, state: &mut UiState) {
         return;
     }
     for h in items {
-        ui.horizontal(|ui| {
+        row(ui, &h.id, |ui| {
             ui.vertical(|ui| {
                 if let Some(p) = parent_path(data, &h.task_id) {
                     ui.label(RichText::new(p).small().weak());
@@ -747,7 +754,7 @@ pub fn history(ui: &mut egui::Ui, data: &AppData, state: &mut UiState) {
         return;
     }
     for h in items {
-        ui.horizontal(|ui| {
+        row(ui, &h.id, |ui| {
             let date = h.completed_at.as_deref().map(|d| local_fmt(d, s.date_fmt)).unwrap_or_default();
             ui.label(RichText::new(date).small().weak().monospace());
             ui.vertical(|ui| {
