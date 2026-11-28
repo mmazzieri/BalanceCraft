@@ -426,23 +426,28 @@ fn pulse(ui: &mut egui::Ui, p: &mut Pulse, data: &AppData, s: &'static Strings, 
     if let Some(edit) = &mut p.next {
         ui.add(egui::TextEdit::singleline(&mut edit.text).desired_width(400.0));
         ui.horizontal(|ui| {
-            ui.label(s.linked_task);
+            let name = ui.label(s.linked_task);
             let label = |id: &Option<String>| {
                 id.as_ref()
                     .and_then(|id| candidates.iter().find(|(c, _)| c == id))
                     .map_or_else(|| s.no_task.to_owned(), |(_, l)| l.clone())
             };
-            egui::ComboBox::from_id_salt("next-task").selected_text(label(&edit.task)).width(300.0).show_ui(ui, |ui| {
-                ui.selectable_value(&mut edit.task, None, s.no_task);
-                for (id, l) in &candidates {
-                    if ui.selectable_label(edit.task.as_deref() == Some(id), l).clicked() {
-                        edit.task = Some(id.clone());
-                        if edit.text.trim().is_empty() {
-                            edit.text = l.rsplit(" › ").next().unwrap_or(l).to_owned();
+            egui::ComboBox::from_id_salt("next-task")
+                .selected_text(label(&edit.task))
+                .width(300.0)
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut edit.task, None, s.no_task);
+                    for (id, l) in &candidates {
+                        if ui.selectable_label(edit.task.as_deref() == Some(id), l).clicked() {
+                            edit.task = Some(id.clone());
+                            if edit.text.trim().is_empty() {
+                                edit.text = l.rsplit(" › ").next().unwrap_or(l).to_owned();
+                            }
                         }
                     }
-                }
-            });
+                })
+                .response
+                .labelled_by(name.id);
         });
         ui.horizontal(|ui| {
             if ui.button(s.set).clicked() {

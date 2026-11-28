@@ -26,7 +26,9 @@ pub fn area_color(hex: &str) -> Color32 {
 /// "Complete: Buy bread". The name starts with what the button shows.
 /// A list row whose widgets take their ids from `key`, not from where the row is.
 fn row(ui: &mut egui::Ui, key: &str, add: impl FnOnce(&mut egui::Ui)) {
-    ui.push_id(key, |ui| ui.horizontal(add));
+    // An explicit scope: `push_id` would still mix in the row's position.
+    let id = ui.scope_id().with(key);
+    ui.scope_builder(egui::UiBuilder::new().scope_id(id), |ui| ui.horizontal(add));
 }
 
 fn row_button(ui: &mut egui::Ui, label: &str, item: &str) -> egui::Response {
@@ -187,11 +189,18 @@ pub fn today(ui: &mut egui::Ui, data: &AppData, state: &mut UiState) {
         .as_ref()
         .and_then(|id| live_areas(data).find(|a| &a.id == id))
         .map_or(s.all_areas.to_owned(), |a| a.name.clone());
-    egui::ComboBox::from_id_salt("area-filter").selected_text(selected).show_ui(ui, |ui| {
-        ui.selectable_value(&mut state.area_filter, None, s.all_areas);
-        for a in live_areas(data) {
-            ui.selectable_value(&mut state.area_filter, Some(a.id.clone()), &a.name);
-        }
+    ui.horizontal(|ui| {
+        let name = ui.label(s.show_area);
+        egui::ComboBox::from_id_salt("area-filter")
+            .selected_text(selected)
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut state.area_filter, None, s.all_areas);
+                for a in live_areas(data) {
+                    ui.selectable_value(&mut state.area_filter, Some(a.id.clone()), &a.name);
+                }
+            })
+            .response
+            .labelled_by(name.id);
     });
     ui.add_space(8.0);
 
@@ -545,7 +554,7 @@ pub fn tree(ui: &mut egui::Ui, data: &AppData, state: &mut UiState) {
 pub fn settings(ui: &mut egui::Ui, data: &AppData, state: &mut UiState, doc_id: &str, path: &Path) {
     let s = state.s();
     egui::Grid::new("settings").num_columns(2).spacing([16.0, 10.0]).show(ui, |ui| {
-        ui.label(s.language);
+        let name = ui.label(s.language);
         let mut lang = state.lang;
         egui::ComboBox::from_id_salt("lang")
             .selected_text(match lang {
@@ -555,21 +564,27 @@ pub fn settings(ui: &mut egui::Ui, data: &AppData, state: &mut UiState, doc_id: 
             .show_ui(ui, |ui| {
                 ui.selectable_value(&mut lang, Lang::It, "Italiano");
                 ui.selectable_value(&mut lang, Lang::En, "English");
-            });
+            })
+            .response
+            .labelled_by(name.id);
         if lang != state.lang {
             state.actions.push(Action::SetLang(lang));
         }
         ui.end_row();
 
-        ui.label(s.theme);
+        let name = ui.label(s.theme);
         let mut theme = state.theme;
         let themes = [(Theme::System, s.theme_system), (Theme::Light, s.theme_light), (Theme::Dark, s.theme_dark)];
         let current = themes.iter().find(|(t, _)| *t == theme).map_or(s.theme_system, |(_, name)| name);
-        egui::ComboBox::from_id_salt("theme").selected_text(current).show_ui(ui, |ui| {
-            for (t, name) in themes {
-                ui.selectable_value(&mut theme, t, name);
-            }
-        });
+        egui::ComboBox::from_id_salt("theme")
+            .selected_text(current)
+            .show_ui(ui, |ui| {
+                for (t, name) in themes {
+                    ui.selectable_value(&mut theme, t, name);
+                }
+            })
+            .response
+            .labelled_by(name.id);
         if theme != state.theme {
             state.actions.push(Action::SetTheme(theme));
         }
@@ -777,7 +792,7 @@ pub fn history(ui: &mut egui::Ui, data: &AppData, state: &mut UiState) {
 
 #[cfg(test)]
 mod a11y_tests {
-    use super::{areas, tree};
+    use super::{areas, today, tree};
     use crate::app::{Action, Theme, UiState, View};
     use crate::dialogs::Dialog;
     use crate::i18n::Lang;
@@ -822,6 +837,26 @@ mod a11y_tests {
         harness.run();
         let opened = harness.state().actions.iter().any(|a| matches!(a, Action::Open(Dialog::Pulse(_))));
         assert!(opened);
+    }
+
+    /// The focus stays on a row's button when a row above it goes away, as
+    /// when a change from another computer arrives while a dialog is open.
+    #[test]
+    fn a_row_keeps_its_focus_when_the_list_changes() {
+        let mut harness =
+            Harness::new_ui_state(|ui, (data, st): &mut (AppData, UiState)| today(ui, data, st), (data(), state()));
+        harness.run();
+        let label = "Edit: Book a visit";
+        assert!(harness.query_by_label("Edit: Paint the door").is_some());
+        harness.get_by_label(label).focus();
+        harness.run();
+        harness.get_by(|n| n.is_focused() && n.label().is_some_and(|l| l == label));
+        if let Some(home) = harness.state_mut().0.areas.first_mut() {
+            home.children.clear();
+        }
+        harness.run();
+        assert!(harness.query_by_label("Edit: Paint the door").is_none());
+        harness.get_by(|n| n.is_focused() && n.label().is_some_and(|l| l == label));
     }
 
     #[test]
