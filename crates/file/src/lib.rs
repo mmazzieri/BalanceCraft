@@ -25,6 +25,22 @@ pub const EXTENSION: &str = "balancecraft";
 /// Media type of a `.balancecraft` file.
 pub const MEDIA_TYPE: &str = "application/vnd.balancecraft+json";
 
+/// Largest file read as a document, a replica or a conflict copy. A document of
+/// years of use is a few hundred kilobytes; a bigger file is refused before it
+/// is read into memory.
+pub const MAX_FILE_BYTES: u64 = 64 * 1024 * 1024;
+
+/// Reads at most [`MAX_FILE_BYTES`] of `path`; a longer file is an error.
+pub fn read_file(path: &std::path::Path) -> std::io::Result<Vec<u8>> {
+    use std::io::Read;
+    let mut bytes = Vec::new();
+    std::fs::File::open(path)?.take(MAX_FILE_BYTES.saturating_add(1)).read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > MAX_FILE_BYTES {
+        return Err(std::io::Error::other(format!("the file is larger than {} MB", MAX_FILE_BYTES / (1024 * 1024))));
+    }
+    Ok(bytes)
+}
+
 /// A `.balancecraft` document.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Document {
@@ -111,11 +127,26 @@ pub fn read(bytes: &[u8], generator: &str, now_rfc3339: &str) -> Result<(Documen
 }
 
 /// Writes a document: JSON indented by two spaces, fields in a stable order,
-/// final newline. The same document always gives the same bytes.
+/// final newline. The same document always gives the same bytes. A document
+/// that [`read`] would refuse (nested too deep) is an error, not a file that
+/// no longer opens.
 pub fn write(doc: &Document) -> Result<Vec<u8>, serde_json::Error> {
     let mut out = serde_json::to_vec_pretty(doc)?;
+    serde_json::from_slice::<Value>(&out)?;
     out.push(b'\n');
+    fits(&out)?;
     Ok(out)
+}
+
+/// Refuses bytes that [`read_file`] would refuse for their size.
+pub(crate) fn fits(bytes: &[u8]) -> Result<(), serde_json::Error> {
+    if bytes.len() as u64 > MAX_FILE_BYTES {
+        return Err(serde::ser::Error::custom(format!(
+            "the document would be larger than {} MB",
+            MAX_FILE_BYTES / (1024 * 1024)
+        )));
+    }
+    Ok(())
 }
 
 #[cfg(test)]

@@ -12,7 +12,9 @@ mod view;
 
 use balancecraft_engine::commands::{AreaChange, NewArea, NewTask, TaskChange};
 use balancecraft_engine::settings::{ADVANCE_DAYS_MAX, ADVANCE_DAYS_MIN};
-use balancecraft_engine::tree::{find_visible_area, find_visible_task, is_visible_parent};
+use balancecraft_engine::tree::{
+    MAX_DEPTH, children_of, find_visible_area, find_visible_task, fits_under, height, is_visible_parent,
+};
 use balancecraft_engine::{Clock, Command as Edit, Ctx, apply};
 use balancecraft_file::store::{MERGED_DIR, write_atomic};
 use balancecraft_file::{EXTENSION, Now, Store, StoreError};
@@ -246,7 +248,7 @@ impl Session {
                 if target.symlink_metadata().is_ok() {
                     return invalid(format!("{} exists already", target.display()));
                 }
-                let bytes = std::fs::read(&self.document)
+                let bytes = balancecraft_file::read_file(&self.document)
                     .map_err(|source| StoreError::Io { path: self.document.clone(), source })?;
                 // A copy with the same id would be taken for a conflict copy of the document.
                 let (mut doc, _) = balancecraft_file::read(&bytes, &self.generator, "")
@@ -288,6 +290,10 @@ fn settle(store: &mut Store, now: Now) -> Result<()> {
         store.sync(now)?;
     }
     Ok(())
+}
+
+fn too_deep<T>() -> Result<T> {
+    invalid(format!("a task goes at most {MAX_DEPTH} levels below its area"))
 }
 
 fn new_id() -> String {
@@ -333,6 +339,9 @@ fn edits(data: &AppData, command: Command) -> Result<(Vec<Edit>, String)> {
         Command::Add { parent, name, weight, due, start, notes, prereqs, advance_days } => {
             if !is_visible_parent(&data.areas, &parent) {
                 return invalid(format!("no area or task has the id {parent}"));
+            }
+            if !fits_under(&data.areas, &parent, 1) {
+                return too_deep();
             }
             let id = new_id();
             let task = NewTask {
@@ -402,6 +411,10 @@ fn edits(data: &AppData, command: Command) -> Result<(Vec<Edit>, String)> {
             }
             if balancecraft_engine::tree::search(moving, &parent).is_some() {
                 return invalid("a task cannot be moved inside itself");
+            }
+            let reorder = children_of(&data.areas, &parent).is_some_and(|c| c.iter().any(|n| n.id == id));
+            if !reorder && !fits_under(&data.areas, &parent, height(moving)) {
+                return too_deep();
             }
             (vec![Edit::MoveTask { id: id.clone(), new_parent_id: parent, before }], id)
         }

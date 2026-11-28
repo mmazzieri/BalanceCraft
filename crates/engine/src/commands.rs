@@ -12,8 +12,8 @@ use crate::merge::{AREA_FIELDS, TASK_FIELDS};
 use crate::meta::reorder_siblings;
 use crate::stamps::{alive, mark_deleted, next_stamp, touch, touch_structure};
 use crate::tree::{
-    children_of, children_of_mut, extract, find_task, find_visible_area, find_visible_task, is_visible_parent, search,
-    update_task,
+    children_of, children_of_mut, extract, find_task, find_visible_area, find_visible_task, fits_under, height,
+    is_visible_parent, search, update_task,
 };
 use balancecraft_model::{
     ActionSource, AppData, Area, AreaAction, EntityMeta, GlobalSettings, HistoryEntry, Num, SettingValues, TaskNode,
@@ -342,7 +342,7 @@ fn reorder<T: Serialize + serde::de::DeserializeOwned>(prev: &[T], order: &[Stri
 }
 
 fn add_task(data: &mut AppData, parent_id: &str, id: &str, task: &NewTask, t: f64) -> Option<()> {
-    if !is_visible_parent(&data.areas, parent_id) {
+    if !is_visible_parent(&data.areas, parent_id) || !fits_under(&data.areas, parent_id, 1) {
         return None;
     }
     let mut n = TaskNode {
@@ -433,7 +433,10 @@ fn move_task(data: &mut AppData, id: &str, new_parent_id: &str, before: Option<&
     // Not into itself, nor under a deleted or missing parent: the subtree
     // would disappear without a tombstone.
     let (moving, _) = find_task(&data.areas, id)?;
-    if search(moving, new_parent_id).is_some() || !is_visible_parent(&data.areas, new_parent_id) {
+    if search(moving, new_parent_id).is_some()
+        || !is_visible_parent(&data.areas, new_parent_id)
+        || !fits_under(&data.areas, new_parent_id, height(moving))
+    {
         return None;
     }
     let mut node = extract(&mut data.areas, id)?;

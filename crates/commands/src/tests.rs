@@ -186,3 +186,50 @@ fn links_do_not_lead_out_of_the_roots() {
     assert_eq!(fs::read_to_string(&secret).unwrap(), "MARKER");
     assert_eq!(fs::read_dir(&other).unwrap().count(), 1);
 }
+
+#[test]
+fn tasks_stop_at_the_deepest_level() {
+    let pc = Pc::new();
+    let mut levels = vec![pc.add(json!({"cmd": "add_area", "name": "Home"}))];
+    for i in 1..=balancecraft_engine::tree::MAX_DEPTH {
+        let parent = levels.last().unwrap().clone();
+        levels.push(pc.add(json!({"cmd": "add", "parent": parent, "name": format!("Level {i}")})));
+    }
+    let last = levels.last().unwrap().clone();
+    let err = pc.try_run(&pc.session(), json!({"cmd": "add", "parent": last, "name": "Too deep"})).unwrap_err();
+    assert!(matches!(err, Error::Invalid(_)), "{err:?}");
+
+    let work = pc.add(json!({"cmd": "add_area", "name": "Work"}));
+    let branch = pc.add(json!({"cmd": "add", "parent": work, "name": "Branch"}));
+    pc.add(json!({"cmd": "add", "parent": branch, "name": "Leaf"}));
+    let below_last = levels[levels.len() - 2].clone();
+    let err = pc.try_run(&pc.session(), json!({"cmd": "move", "id": branch, "parent": below_last})).unwrap_err();
+    assert!(matches!(err, Error::Invalid(_)), "{err:?}");
+    pc.run(json!({"cmd": "move", "id": branch, "parent": levels[1]}));
+}
+
+/// A document nested to the edge of what the reader takes: a round either refuses it
+/// or leaves a file that opens again, never one that does not.
+#[test]
+fn a_deep_document_never_becomes_unreadable() {
+    let pc = Pc::new();
+    let mut doc: Value = serde_json::from_slice(&fs::read(&pc.doc).unwrap()).unwrap();
+    for depth in [50usize, 58, 59, 60] {
+        let mut node = json!({"id": "leaf", "name": "leaf", "children": []});
+        for i in (0..depth).rev() {
+            node = json!({"id": format!("t{i}"), "name": "n", "children": [node]});
+        }
+        doc["data"]["areas"] = json!([{"id": "a", "name": "A", "color": "#000000", "children": [node]}]);
+        let before = serde_json::to_vec(&doc).unwrap();
+        fs::write(&pc.doc, &before).unwrap();
+        let state = tempfile::tempdir().unwrap();
+        let s = Session::new(&pc.doc, state.path(), "test", None).unwrap();
+        let clock = Clock::at(Rome, T0 + 60_000).unwrap();
+        let _ = s.run(serde_json::from_value(json!({"cmd": "complete", "id": "leaf"})).unwrap(), &clock);
+        let after = fs::read(&pc.doc).unwrap();
+        assert!(
+            after == before || balancecraft_file::read(&after, "test", "").is_ok(),
+            "depth {depth}: the document was replaced by one that does not open"
+        );
+    }
+}

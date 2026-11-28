@@ -301,3 +301,26 @@ fn move_before_a_sibling() {
     let e = run(&d, Command::MoveTask { id: "t1".into(), new_parent_id: "a".into(), before }, 300.0);
     assert_eq!(ids(&e.areas[0].children), ["b", "t1"]);
 }
+
+#[test]
+fn tasks_stop_at_the_deepest_level() {
+    let add = |d: &AppData, parent: &str, id: &str| {
+        apply(d, &Command::AddTask { parent_id: parent.into(), id: id.into(), task: NewTask::default() }, &ctx(200.0))
+    };
+    let mut d = base();
+    let mut parent = "a".to_owned();
+    for i in 0..crate::tree::MAX_DEPTH {
+        let id = format!("d{i}");
+        d = add(&d, &parent, &id).unwrap();
+        parent = id;
+    }
+    assert!(add(&d, &parent, "deeper").is_none(), "one level past the limit");
+
+    // A branch two levels high does not fit under the last level but one.
+    let below_last = format!("d{}", crate::tree::MAX_DEPTH - 2);
+    let mv = |d: &AppData, to: &str| {
+        apply(d, &Command::MoveTask { id: "b".into(), new_parent_id: to.into(), before: None }, &ctx(201.0))
+    };
+    assert!(mv(&d, &below_last).is_none());
+    assert!(mv(&d, "d0").is_some(), "a move that fits still happens");
+}

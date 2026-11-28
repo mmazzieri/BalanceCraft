@@ -45,6 +45,33 @@ pub fn is_visible_parent(areas: &[Area], id: &str) -> bool {
     find_visible_area(areas, id).is_some() || find_visible_task(areas, id).is_some()
 }
 
+/// Most levels of tasks under an area. A document stays well inside what the
+/// file reader accepts (128 levels of JSON, with the task's `_meta` and the
+/// replica's envelope around it), so a file BalanceCraft writes always opens.
+pub const MAX_DEPTH: usize = 32;
+
+/// Level of the area or task `id`: 0 for an area, 1 for its tasks, and so on.
+pub fn level(areas: &[Area], id: &str) -> Option<usize> {
+    fn walk(nodes: &[TaskNode], id: &str, at: usize) -> Option<usize> {
+        nodes.iter().find_map(|n| if n.id == id { Some(at) } else { walk(&n.children, id, at.saturating_add(1)) })
+    }
+    if areas.iter().any(|a| a.id == id) {
+        return Some(0);
+    }
+    areas.iter().find_map(|a| walk(&a.children, id, 1))
+}
+
+/// Levels of `node` and its subtree: 1 for a task without children.
+pub fn height(node: &TaskNode) -> usize {
+    node.children.iter().map(height).max().unwrap_or(0).saturating_add(1)
+}
+
+/// True when `node` (with its subtree) can go under the area or task `parent_id`
+/// without passing [`MAX_DEPTH`].
+pub fn fits_under(areas: &[Area], parent_id: &str, node_height: usize) -> bool {
+    level(areas, parent_id).is_some_and(|l| l.saturating_add(node_height) <= MAX_DEPTH)
+}
+
 /// Applies `f` to every task with id `id`, at any depth. Returns whether one
 /// was found.
 pub fn update_task(nodes: &mut [TaskNode], id: &str, f: &mut dyn FnMut(&mut TaskNode)) -> bool {

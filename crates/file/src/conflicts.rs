@@ -42,7 +42,7 @@ pub fn find(shared: &Path, document_id: &str, generator: &str) -> (Vec<(PathBuf,
             continue;
         }
         let Some(middle) = other.strip_suffix(&suffix).and_then(|o| o.strip_prefix(stem)) else { continue };
-        let Ok(bytes) = fs::read(&path) else { continue };
+        let Ok(bytes) = crate::read_file(&path) else { continue };
         let Ok((doc, Origin::BalanceCraft)) = read(&bytes, generator, "") else { continue };
         if doc.document_id != document_id {
             continue;

@@ -142,8 +142,16 @@ pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), StoreError> {
     Ok(())
 }
 
+/// The bytes of a replica; as [`write`], never one that would not be read back.
+fn replica_bytes(replica: &Replica) -> Result<Vec<u8>, StoreError> {
+    let bytes = serde_json::to_vec(replica)?;
+    serde_json::from_slice::<Replica>(&bytes)?;
+    crate::fits(&bytes)?;
+    Ok(bytes)
+}
+
 fn read_doc(path: &Path, generator: &str, now: Now) -> Result<(Document, Origin, Vec<u8>), StoreError> {
-    let bytes = fs::read(path).map_err(io_err(path))?;
+    let bytes = crate::read_file(path).map_err(io_err(path))?;
     let (doc, origin) =
         read(&bytes, generator, &now.rfc3339()).map_err(|source| StoreError::Read { path: path.to_owned(), source })?;
     Ok((doc, origin, bytes))
@@ -196,7 +204,6 @@ impl Store {
         let doc = crate::new_document(generator, &now.rfc3339(), data);
         let lock = Self::lock(replica_dir, &doc.document_id)?;
         let bytes = write(&doc)?;
-        write_atomic(shared, &bytes)?;
         let replica = Replica {
             document_id: doc.document_id.clone(),
             shared_path: shared.to_owned(),
@@ -204,6 +211,9 @@ impl Store {
             disk_hash: hash(&bytes),
             document: doc,
         };
+        // The replica nests the document one level deeper: check it before the shared file exists.
+        replica_bytes(&replica)?;
+        write_atomic(shared, &bytes)?;
         let store = Store {
             shared: shared.to_owned(),
             replica_dir: replica_dir.to_owned(),
@@ -228,7 +238,7 @@ impl Store {
         }
         let lock = Self::lock(replica_dir, &doc.document_id)?;
         let rpath = Self::replica_path(replica_dir, &doc.document_id);
-        let replica = match fs::read(&rpath) {
+        let replica = match crate::read_file(&rpath) {
             Ok(b) => match serde_json::from_slice::<Replica>(&b) {
                 Ok(r) => r,
                 Err(_) => Replica {
@@ -239,6 +249,10 @@ impl Store {
                     document: doc.clone(),
                 },
             },
+            // Too large or unreadable for another reason: it may hold edits not yet synced.
+            Err(e) if e.kind() != io::ErrorKind::NotFound => {
+                return Err(StoreError::Io { path: rpath, source: e });
+            }
             Err(_) => Replica {
                 document_id: doc.document_id.clone(),
                 shared_path: shared.to_owned(),
@@ -290,18 +304,23 @@ impl Store {
     /// Replaces the document after an edit. The replica is written at once; the
     /// shared file at the next [`Store::sync`].
     pub fn set_data(&mut self, data: AppData) -> Result<(), StoreError> {
-        self.replica.document.data = data;
-        self.save_replica()
+        let previous = std::mem::replace(&mut self.replica.document.data, data);
+        let saved = self.save_replica();
+        if saved.is_err() {
+            // A refused edit is not kept in memory either.
+            self.replica.document.data = previous;
+        }
+        saved
     }
 
     fn save_replica(&self) -> Result<(), StoreError> {
-        let bytes = serde_json::to_vec(&self.replica)?;
+        let bytes = replica_bytes(&self.replica)?;
         write_atomic(&Self::replica_path(&self.replica_dir, &self.replica.document_id), &bytes)
     }
 
     /// Has the shared file changed since the last round? Cheap enough to poll.
     pub fn disk_changed(&self) -> bool {
-        fs::read(&self.shared).map(|b| hash(&b) != self.replica.disk_hash).unwrap_or(false)
+        crate::read_file(&self.shared).map(|b| hash(&b) != self.replica.disk_hash).unwrap_or(false)
     }
 
     /// One sync round: absorb conflict copies, merge the replica with the shared
@@ -338,6 +357,13 @@ impl Store {
             doc.generator = self.generator.clone();
             doc.saved_at = now.rfc3339();
             let bytes = write(&doc)?;
+            let candidate = Replica {
+                document: doc.clone(),
+                disk_hash: hash(&bytes),
+                last_merged_at: now.ms(),
+                ..self.replica.clone()
+            };
+            replica_bytes(&candidate)?;
             self.backup(&disk_bytes, now)?;
             write_atomic(&self.shared, &bytes)?;
             self.replica.disk_hash = hash(&bytes);
