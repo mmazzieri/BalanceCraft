@@ -122,6 +122,31 @@ Il README e `ATTRIBUTION.md` dichiarano che modello, algoritmo e merge vengono d
 - Associazione dell'estensione `.balancecraft` e del MIME `application/vnd.balancecraft+json`.
 - Secret di firma Apple nei secret del repository: li inserisce Mauro.
 
+## Conformità
+
+BalanceCraft segue le regole condivise delle Craft App: la copia di `standards/app-agents.md` di `storytold/craft-contrib` sta in `AGENTS.md`, fra i marcatori di RFC-0072, seguita dalle note di questo repository; `CLAUDE.md` contiene solo `@AGENTS.md`. La verifica complessiva è la issue #10.
+
+Standard seguiti:
+
+- `never-crash` e house rules Rust: `unsafe` vietato (salvo `crates/ffi/src/android.rs` e `c.rs`), clippy `-D warnings`, `unwrap`/`expect`/`panic` negati fuori dai test; un file oltre 64 MB non si legge, le attività stanno al massimo 32 livelli sotto la loro area, e un documento che il lettore rifiuterebbe non si scrive.
+- `licences.md`: le licenze delle dipendenze Rust sono nell'allowlist, controllata da `cargo deny check`; gli asset (icona, font di egui, vettori di conformità) non passano da `cargo deny`: la loro provenienza e licenza sono scritte in `ATTRIBUTION.md` e si verificano a mano in revisione. `ATTRIBUTION.md` e `THIRD-PARTY-LICENSES.txt` sono nei pacchetti.
+- `time.md`: date con `chrono`, orologio passato dall'esterno all'engine.
+- `clean-room.md`: nessun codice, testo, icona o asset di prodotti proprietari; il comportamento di Cerqua è la specifica, verificata dai vettori di conformità.
+- `naming.md`: nessun nome di prodotto o funzione di altre aziende nelle etichette. I servizi di sincronizzazione (OneDrive, Google Drive, Dropbox, Syncthing) compaiono solo come indicazioni di compatibilità, come permette la regola 3. Il nome generico del pacchetto Linux era «Life balance planner», troppo vicino al nome di un prodotto: ora è «Planner by areas of life» (verifica del 28/11/2026).
+- RFC-0015 (accesso confinato): `balancecraft-cli mcp` si rifiuta di partire senza `--automation-read-root` e `--automation-write-root`.
+- `pull-requests.md`: le PR di questo repository seguono la forma della descrizione di quello standard. Il template di RFC-0002 non si applica: è per le PR di RFC in `craft-contrib`.
+- Librerie condivise: il server MCP usa `craft-mcp-server` di `storytold/craft-libs`. Formato del file, merge e scrittura su cartella sincronizzata restano qui, perché sono il formato di Cerqua.
+
+Eccezioni dichiarate:
+
+- I workflow non chiamano ancora `storytold/craft-common-actions` (regola 17): le azioni condivise sono pensate per i repository di storytold.
+- Le traduzioni stanno nell'app (`crates/ui-egui/src/i18n.rs`) e non in `storytold/craft-i18n` (regola 16), che serve le app di storytold.
+- Le schermate delle app per telefono sono in Kotlin e Swift (regola 11), perché il selettore delle cartelle di Android e la coordinazione dei file di iOS chiedono le interfacce dei telefoni; modello, algoritmo e merge restano in Rust (`crates/ffi`).
+
+- `accessibility.md` (RFC-0014), in parte: i colori che portano un significato (scadenze, silenzio delle aree, barra di stato, testo attenuato) hanno almeno 4.5:1 in tema chiaro e scuro (`crates/ui-egui/src/theme.rs`, con il test); i pulsanti ripetuti su ogni riga hanno un nome che dice quale riga («Fatto: Pitturare la porta», «… Azioni: Casa»); le schede delle aree si raggiungono con Tab e si aprono con Invio, con il focus visibile; la barra di stato e l'avviso di attività completata sono live region. Le scadenze e il silenzio delle aree si leggono anche nel testo, non solo nel colore. Spostare attività e aree si fa anche senza trascinare, con i comandi Sposta in…, Su e Giù del menu «…».
+
+Ancora da fare: per l'accessibilità, F6 fra le regioni e il ritorno del focus alla chiusura dei dialoghi, la prova con un lettore di schermo e i controlli di UI Automation in CI; la firma dei pacchetti Windows (#15).
+
 ## Fasi e consegne
 
 1. **Scheletro**: workspace, licenze (LICENSE-MIT, LICENSE-APACHE, NOTICE), README, AGENTS.md, CI, `deny.toml` con `[graph] targets` limitato a Windows, macOS e Linux (per escludere dipendenze solo-UEFI come `r-efi`). Stringhe in una tabella come il launcher, non `fluent` (la sua dipendenza `self_cell` ha una licenza da verificare).
