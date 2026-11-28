@@ -57,6 +57,7 @@ fixtures/         file di esempio e vettori di conformità generati da Cerqua
 - `Salva come` genera un `documentId` nuovo.
 - `formatVersion` maggiore di quello supportato: apertura rifiutata, in sola lettura nessuna scrittura.
 - Id nuovi: 12 caratteri base36 casuali (Cerqua usa 7; verificato che nessun punto del codice di Cerqua ne assuma la lunghezza).
+- Limiti contro i file ostili: un file oltre 64 MB non viene letto (documento, replica, copie di conflitto); il lettore accetta 128 livelli di JSON; le attività stanno al massimo 32 livelli sotto la loro area (`tree::MAX_DEPTH`: aggiungere o spostare oltre è rifiutato, con un messaggio nell'app e nella CLI), così un documento con `_meta` e la replica che lo avvolge restano ben dentro il limite. Un documento o una replica che il lettore rifiuterebbe non viene scritto: l'errore si vede e il file resta com'era. Test: `hostile_documents_never_panic` (ogni valore sostituito da uno di altro tipo, ogni troncamento) e `a_deep_document_never_becomes_unreadable`.
 - JSON indentato e con chiavi in ordine stabile, per diff leggibili e per non far risincronizzare il file senza modifiche.
 
 ## Salvataggio su cartella sincronizzata

@@ -5,6 +5,7 @@ use crate::i18n::{Lang, Strings};
 use crate::views;
 use balancecraft_engine::commands::{Command, Ctx, NewArea, apply};
 use balancecraft_engine::defaults::DEFAULT_AREAS;
+use balancecraft_engine::tree::{MAX_DEPTH, find_task, fits_under, height};
 use balancecraft_file::{EXTENSION, Now, Store, StoreError};
 use balancecraft_model::AppData;
 use serde::{Deserialize, Serialize};
@@ -149,6 +150,17 @@ fn err_text(e: &StoreError) -> String {
     e.to_string()
 }
 
+/// True when `cmd` adds or moves a task past the deepest level.
+fn too_deep(data: &AppData, cmd: &Command) -> bool {
+    match cmd {
+        Command::AddTask { parent_id, .. } => !fits_under(&data.areas, parent_id, 1),
+        Command::MoveTask { id, new_parent_id, .. } => {
+            find_task(&data.areas, id).is_some_and(|(n, _)| !fits_under(&data.areas, new_parent_id, height(n)))
+        }
+        _ => false,
+    }
+}
+
 fn with_extension(p: PathBuf) -> PathBuf {
     if p.extension().is_some_and(|e| e == EXTENSION) { p } else { p.with_extension(EXTENSION) }
 }
@@ -268,7 +280,13 @@ impl BalanceCraftApp {
     fn run(&mut self, cmd: &Command, time: f64) {
         let Some(store) = self.store.as_mut() else { return };
         let ctx = Ctx::new(store.data(), now_ms());
-        let Some(next) = apply(store.data(), cmd, &ctx) else { return };
+        let Some(next) = apply(store.data(), cmd, &ctx) else {
+            if too_deep(store.data(), cmd) {
+                let s = self.ui.s();
+                self.status = Status::Error(s.too_deep.replace("{}", &MAX_DEPTH.to_string()));
+            }
+            return;
+        };
         match store.set_data(next) {
             Ok(()) => {
                 self.dirty_since = Some(time);

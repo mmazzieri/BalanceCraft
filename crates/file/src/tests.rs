@@ -87,3 +87,89 @@ fn new_documents_get_distinct_ids() {
     let b = new_document(GEN, NOW, AppData::default());
     assert_ne!(a.document_id, b.document_id);
 }
+
+/// Every value of a real document replaced by a value of another kind, and the
+/// document cut short: reading, writing and the engine give an answer, never a panic.
+#[test]
+fn hostile_documents_never_panic() {
+    use balancecraft_engine::{Clock, Rules, compute_flat_list, merge};
+    let mut doc = sample();
+    doc["data"]["areas"][0]["children"] = json!([
+        { "id": "t1", "name": "Paint", "weight": 5, "dueDate": "2026-12-01T18:00", "startDate": "2026-11-01T08:00",
+          "notes": "white", "prereqs": ["t2"], "advanceDays": 3,
+          "children": [{ "id": "t2", "name": "Buy", "children": [], "_meta": { "fields": { "name": 1 } } }] }
+    ]);
+    doc["data"]["history"] = json!([{ "id": "h1", "taskId": "t2", "areaId": "a1", "name": "Buy",
+        "completedAt": "2026-11-20T10:00:00.000Z", "effort": 2, "waiting": true, "waitingFor": "shop" }]);
+    doc["data"]["areaActions"] = json!([{ "id": "x1", "areaId": "a1", "text": "go", "at": "2026-11-20T10:00:00.000Z",
+        "source": "manual", "taskId": "t1" }]);
+    doc["data"]["settings"] = json!({ "advanceDays": 2, "_meta": { "fields": { "advanceDays": 1 } } });
+
+    fn paths(v: &Value, at: &str, out: &mut Vec<String>) {
+        out.push(at.to_owned());
+        match v {
+            Value::Object(m) => m.iter().for_each(|(k, c)| paths(c, &format!("{at}/{k}"), out)),
+            Value::Array(a) => a.iter().enumerate().for_each(|(i, c)| paths(c, &format!("{at}/{i}"), out)),
+            _ => {}
+        }
+    }
+    let clock = Clock::at(chrono::Utc, 1_795_500_000_000).unwrap();
+    let exercise = |bytes: &[u8]| {
+        let Ok((d, _)) = read(bytes, GEN, NOW) else { return };
+        let _ = write(&d);
+        let _ = compute_flat_list(&d.data.areas, &d.data.history, &clock);
+        let _ = merge(&d.data, &AppData::default(), Rules::BalanceCraft);
+    };
+    let junk: Vec<Value> = serde_json::from_str(
+        r#"[null, true, -1, 1e308, -1e308, 0.5, 18446744073709551615, -9223372036854775808,
+            "", "9999-99-99", "+275760-09-13T00:00:00Z", [], {}, [null]]"#,
+    )
+    .unwrap();
+    let mut all = Vec::new();
+    paths(&doc, "", &mut all);
+    for p in &all {
+        for j in &junk {
+            let mut d = doc.clone();
+            if let Some(slot) = d.pointer_mut(p) {
+                *slot = j.clone();
+            }
+            exercise(&bytes(&d));
+        }
+    }
+    let good = bytes(&doc);
+    for n in 0..good.len() {
+        exercise(&good[..n]);
+    }
+}
+
+#[test]
+fn nesting_past_the_limit_is_an_error() {
+    let deep = format!("{}{}", "{\"a\":[".repeat(100_000), "]}".repeat(100_000));
+    assert!(read(deep.as_bytes(), GEN, NOW).is_err());
+    let mut doc = sample();
+    let mut node = json!({ "id": "leaf", "name": "leaf", "children": [] });
+    for i in 0..200 {
+        node = json!({ "id": format!("t{i}"), "name": "n", "children": [node] });
+    }
+    doc["data"]["areas"][0]["children"] = json!([node]);
+    assert!(read(&bytes(&doc), GEN, NOW).is_err());
+}
+
+#[test]
+fn a_document_that_would_not_open_is_not_written() {
+    let (mut doc, _) = read(&bytes(&sample()), GEN, NOW).unwrap();
+    let mut deep = json!(1);
+    for _ in 0..200 {
+        deep = json!([deep]);
+    }
+    doc.extensions.insert("com.example.deep".to_owned(), deep);
+    assert!(write(&doc).is_err());
+}
+
+#[test]
+fn a_file_too_large_is_refused_before_it_is_read() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("big.balancecraft");
+    std::fs::File::create(&path).unwrap().set_len(MAX_FILE_BYTES + 1).unwrap();
+    assert!(read_file(&path).is_err());
+}

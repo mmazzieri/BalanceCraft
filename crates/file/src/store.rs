@@ -143,7 +143,7 @@ pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), StoreError> {
 }
 
 fn read_doc(path: &Path, generator: &str, now: Now) -> Result<(Document, Origin, Vec<u8>), StoreError> {
-    let bytes = fs::read(path).map_err(io_err(path))?;
+    let bytes = crate::read_file(path).map_err(io_err(path))?;
     let (doc, origin) =
         read(&bytes, generator, &now.rfc3339()).map_err(|source| StoreError::Read { path: path.to_owned(), source })?;
     Ok((doc, origin, bytes))
@@ -228,7 +228,7 @@ impl Store {
         }
         let lock = Self::lock(replica_dir, &doc.document_id)?;
         let rpath = Self::replica_path(replica_dir, &doc.document_id);
-        let replica = match fs::read(&rpath) {
+        let replica = match crate::read_file(&rpath) {
             Ok(b) => match serde_json::from_slice::<Replica>(&b) {
                 Ok(r) => r,
                 Err(_) => Replica {
@@ -296,12 +296,14 @@ impl Store {
 
     fn save_replica(&self) -> Result<(), StoreError> {
         let bytes = serde_json::to_vec(&self.replica)?;
+        // As `write`: never a replica that would not be read back.
+        serde_json::from_slice::<Replica>(&bytes)?;
         write_atomic(&Self::replica_path(&self.replica_dir, &self.replica.document_id), &bytes)
     }
 
     /// Has the shared file changed since the last round? Cheap enough to poll.
     pub fn disk_changed(&self) -> bool {
-        fs::read(&self.shared).map(|b| hash(&b) != self.replica.disk_hash).unwrap_or(false)
+        crate::read_file(&self.shared).map(|b| hash(&b) != self.replica.disk_hash).unwrap_or(false)
     }
 
     /// One sync round: absorb conflict copies, merge the replica with the shared
