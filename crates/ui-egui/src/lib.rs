@@ -5,6 +5,7 @@ mod app;
 mod dialogs;
 mod forms;
 mod i18n;
+mod theme;
 mod views;
 
 pub use app::BalanceCraftApp;

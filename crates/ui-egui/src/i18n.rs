@@ -128,6 +128,7 @@ pub struct Strings {
     pub filter: &'static str,
     pub deleted_task: &'static str,
     pub drag_hint: &'static str,
+    pub actions: &'static str,
     /// strftime format of a date in lists.
     pub date_fmt: &'static str,
 }
@@ -234,6 +235,7 @@ pub static IT: Strings = Strings {
     prereqs: "Prerequisiti",
     filter: "Filtra…",
     deleted_task: "attività eliminata",
+    actions: "Azioni",
     drag_hint: "Trascina un'attività per spostarla: sopra o sotto un'altra, o sul nome di un'area.",
     date_fmt: "%d/%m/%Y",
 };
@@ -340,6 +342,7 @@ pub static EN: Strings = Strings {
     prereqs: "Prerequisites",
     filter: "Filter…",
     deleted_task: "deleted task",
+    actions: "Actions",
     drag_hint: "Drag a task to move it: above or below another, or onto an area name.",
     date_fmt: "%Y-%m-%d",
 };

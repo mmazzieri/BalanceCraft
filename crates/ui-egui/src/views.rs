@@ -22,6 +22,21 @@ pub fn area_color(hex: &str) -> Color32 {
     Color32::from_hex(hex).unwrap_or(Color32::GRAY)
 }
 
+/// Gives a button that repeats on every row a name that says which row:
+/// "Complete: Buy bread". The name starts with what the button shows.
+fn row_button(ui: &mut egui::Ui, label: &str, item: &str) -> egui::Response {
+    let r = ui.button(label);
+    let enabled = r.enabled();
+    r.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, enabled, format!("{label}: {item}")));
+    r
+}
+
+/// Marks a label whose text changes away from the focus (status, a finished
+/// task) as a polite live region, so screen readers read the change.
+pub fn live(r: &egui::Response) {
+    r.ctx.accesskit_node_builder(r.id, |node| node.set_live(egui::accesskit::Live::Polite));
+}
+
 pub fn swatch(ui: &mut egui::Ui, color: Color32) {
     let (rect, _) = ui.allocate_exact_size(egui::vec2(6.0, 16.0), egui::Sense::hover());
     ui.painter().rect_filled(rect, 2.0, color);
@@ -31,7 +46,7 @@ fn light_color(ui: &egui::Ui, light: Light) -> Color32 {
     match light {
         Light::Red => ui.visuals().error_fg_color,
         Light::Yellow => ui.visuals().warn_fg_color,
-        Light::Green => Color32::from_rgb(0x4A, 0x9C, 0x59),
+        Light::Green => crate::theme::ok_color(ui.visuals()),
     }
 }
 
@@ -195,20 +210,20 @@ pub fn today(ui: &mut egui::Ui, data: &AppData, state: &mut UiState) {
                 });
             });
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.button(s.complete).clicked() {
+                if row_button(ui, s.complete, &task.name).clicked() {
                     complete(state, task);
                 }
-                if ui.button(s.wait).clicked() {
+                if row_button(ui, s.wait, &task.name).clicked() {
                     state.actions.push(Action::Open(Dialog::Wait {
                         id: task.id.clone(),
                         name: task.name.clone(),
                         reason: String::new(),
                     }));
                 }
-                if ui.button(s.edit).clicked() {
+                if row_button(ui, s.edit, &task.name).clicked() {
                     state.actions.push(Action::Open(edit_task_dialog(data, task, s)));
                 }
-                if ui.button(s.add_subtask).clicked() {
+                if row_button(ui, s.add_subtask, &task.name).clicked() {
                     state.actions.push(Action::Open(new_task_dialog(data, &task.id)));
                 }
             });
@@ -272,7 +287,7 @@ fn node_menu(
 ) {
     let s = t.s;
     let leaf = !has_live_children(node);
-    ui.menu_button("…", |ui| {
+    let menu = ui.menu_button("…", |ui| {
         if ui.button(s.add_subtask).clicked() {
             state.actions.push(Action::Open(new_task_dialog(t.data, &node.id)));
             ui.close();
@@ -332,6 +347,13 @@ fn node_menu(
             ui.close();
         }
     });
+    name_menu(&menu.response, s, &node.name);
+}
+
+/// The "…" button of a row: "… Actions: Buy bread", so each row's button has
+/// its own name and a screen reader says what it opens.
+fn name_menu(r: &egui::Response, s: &Strings, item: &str) {
+    r.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, format!("… {}: {item}", s.actions)));
 }
 
 /// What is being dragged in the Tree.
@@ -471,7 +493,7 @@ pub fn tree(ui: &mut egui::Ui, data: &AppData, state: &mut UiState) {
                     ui.label(RichText::new(&area.name).strong())
                 });
                 ui.label(RichText::new(fmt_weight(area.weight)).small().weak());
-                ui.menu_button("…", |ui| {
+                let menu = ui.menu_button("…", |ui| {
                     if ui.button(s.add_task).clicked() {
                         state.actions.push(Action::Open(new_task_dialog(data, &area.id)));
                         ui.close();
@@ -506,6 +528,7 @@ pub fn tree(ui: &mut egui::Ui, data: &AppData, state: &mut UiState) {
                         ui.close();
                     }
                 });
+                name_menu(&menu.response, s, &area.name);
                 area_drop(ui, state, area, &ids, i);
             })
             .body(|ui| tree_nodes(ui, &t, state, &area.id, &area.children));
@@ -636,7 +659,16 @@ pub fn areas(ui: &mut egui::Ui, data: &AppData, state: &mut UiState) {
                 None => ui.label(RichText::new(s.no_next).small().weak()),
             };
         });
-        let r = frame.response.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+        // An id of its own: the frame's inner Ui gives up the focus of its id
+        // at every pass, so the card could not keep it.
+        let id = ui.make_persistent_id(("area-card", &row.area.id));
+        let r =
+            ui.interact(frame.response.rect, id, egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+        let name = format!("{}, {}", row.area.name, silence_text(row.silence, s));
+        r.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &name));
+        if r.has_focus() {
+            ui.painter().rect_stroke(r.rect, 4.0, ui.visuals().selection.stroke, egui::StrokeKind::Outside);
+        }
         if r.clicked() {
             state.actions.push(Action::Open(Dialog::Pulse(Box::new(Pulse::open(row.area)))));
         }
@@ -683,7 +715,8 @@ pub fn waiting(ui: &mut egui::Ui, data: &AppData, state: &mut UiState) {
                 }
             });
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if find_visible_task(&data.areas, &h.task_id).is_some() && ui.button(s.complete).clicked() {
+                if find_visible_task(&data.areas, &h.task_id).is_some() && row_button(ui, s.complete, &h.name).clicked()
+                {
                     state.actions.push(Action::Run(Command::CompleteTask {
                         id: h.task_id.clone(),
                         entry_id: new_id(),
@@ -691,7 +724,7 @@ pub fn waiting(ui: &mut egui::Ui, data: &AppData, state: &mut UiState) {
                     }));
                     state.actions.push(Action::Completed { task_id: h.task_id.clone(), name: h.name.clone() });
                 }
-                if ui.button(s.resume).clicked() {
+                if row_button(ui, s.resume, &h.name).clicked() {
                     state.actions.push(Action::Run(Command::Resume { id: h.task_id.clone() }));
                 }
                 area_badge(ui, data, &h.area_id);
@@ -725,12 +758,71 @@ pub fn history(ui: &mut egui::Ui, data: &AppData, state: &mut UiState) {
                 };
             });
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.button(s.uncomplete).clicked() {
+                if row_button(ui, s.uncomplete, &h.name).clicked() {
                     state.actions.push(Action::Run(Command::Uncomplete { id: h.task_id.clone() }));
                 }
                 area_badge(ui, data, &h.area_id);
             });
         });
         ui.separator();
+    }
+}
+
+#[cfg(test)]
+mod a11y_tests {
+    use super::{areas, tree};
+    use crate::app::{Action, Theme, UiState, View};
+    use crate::dialogs::Dialog;
+    use crate::i18n::Lang;
+    use balancecraft_model::AppData;
+    use egui::Key;
+    use egui_kittest::Harness;
+    use egui_kittest::kittest::Queryable;
+
+    fn state() -> UiState {
+        UiState {
+            lang: Lang::En,
+            theme: Theme::Light,
+            view: View::Areas,
+            area_filter: None,
+            dialog: None,
+            toast: None,
+            actions: Vec::new(),
+            global_advance: None,
+        }
+    }
+
+    fn data() -> AppData {
+        let json = r##"{"areas":[
+            {"id":"a1","name":"Home","color":"#3366AA","children":[{"id":"t1","name":"Paint the door","children":[]}]},
+            {"id":"a2","name":"Health","color":"#AA3366","children":[{"id":"t2","name":"Book a visit","children":[]}]}
+        ]}"##;
+        serde_json::from_str(json).unwrap()
+    }
+
+    #[test]
+    fn an_area_card_opens_from_the_keyboard() {
+        let data = data();
+        let mut harness = Harness::new_ui_state(|ui, st: &mut UiState| areas(ui, &data, st), state());
+        harness.run();
+        // Tab reaches a card, which says which area it is; Enter opens its log.
+        harness.key_press(Key::Tab);
+        harness.run();
+        let is_card = |l: &str| l.starts_with("Home, ") || l.starts_with("Health, ");
+        harness.get_by(|n| n.is_focused() && n.label().is_some_and(|l| is_card(&l)));
+        harness.key_press(Key::Enter);
+        harness.run();
+        let opened = harness.state().actions.iter().any(|a| matches!(a, Action::Open(Dialog::Pulse(_))));
+        assert!(opened);
+    }
+
+    #[test]
+    fn each_row_menu_says_which_row() {
+        let data = data();
+        let mut harness = Harness::new_ui_state(|ui, st: &mut UiState| tree(ui, &data, st), state());
+        harness.run();
+        for item in ["Home", "Health", "Paint the door", "Book a visit"] {
+            harness.get_by_label(&format!("… Actions: {item}"));
+        }
     }
 }

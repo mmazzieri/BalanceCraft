@@ -23,4 +23,5 @@ serde.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
+egui_kittest = "0.37"
 serde_json.workspace = true

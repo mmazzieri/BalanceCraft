@@ -173,6 +173,7 @@ impl BalanceCraftApp {
         let lang = prefs.lang.unwrap_or_else(Lang::detect);
         let theme = prefs.theme;
         cc.egui_ctx.set_theme(theme.preference());
+        crate::theme::install(&cc.egui_ctx);
         let mut app = BalanceCraftApp {
             prefs,
             store: None,
@@ -431,7 +432,7 @@ impl BalanceCraftApp {
                 Status::Merged => (s.status_merged.to_owned(), ui.visuals().hyperlink_color),
                 Status::Error(e) => (format!("{}: {e}", s.status_error), ui.visuals().error_fg_color),
             };
-            ui.label(egui::RichText::new(text).color(color));
+            crate::views::live(&ui.label(egui::RichText::new(text).color(color)));
             if let Some(store) = &self.store {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.label(egui::RichText::new(store.shared_path().display().to_string()).weak().small());
@@ -450,7 +451,7 @@ impl BalanceCraftApp {
         let s = self.ui.s();
         let Some(t) = self.ui.toast.clone() else { return };
         ui.horizontal(|ui| {
-            ui.label(format!("{} {}", s.completed_toast, t.name));
+            crate::views::live(&ui.label(format!("{} {}", s.completed_toast, t.name)));
             if ui.button(s.undo).clicked() {
                 self.ui.actions.push(Action::Undo(t.task_id.clone()));
             }
